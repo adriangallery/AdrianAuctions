@@ -10,6 +10,9 @@ const nextConfig = {
     assetPrefix: process.env.NODE_ENV === 'production' ? '/AdrianAuctions/' : '',
     trailingSlash: true,
     transpilePackages: ['ethers'],
+    experimental: {
+      scrollRestoration: true,
+    },
   };
   
   module.exports = nextConfig;

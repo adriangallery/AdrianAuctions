@@ -38,11 +38,20 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create .nojekyll file
-        run: touch out/.nojekyll
-
-      - name: Copy public directory
-        run: cp -R public/* out/ || true
+      - name: Setup fallback and diagnostic files
+        run: |
+          # Crear archivo .nojekyll para evitar procesamiento de Jekyll
+          touch out/.nojekyll
+          
+          # Copiar archivos de public a la carpeta out
+          cp -R public/* out/ || true
+          
+          # Copiar el índice de la raíz como alternativa
+          cp index.html out/index.html
+          
+          # Asegurar que los archivos existen
+          touch out/404.html
+          touch out/fallback.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

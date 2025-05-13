@@ -12,7 +12,7 @@ const Navbar: React.FC = () => {
     // Verificar si ya hay una conexión previa en localStorage
     const checkConnection = async () => {
       if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
         if (accounts && accounts.length > 0) {
           handleConnectWallet();
         }

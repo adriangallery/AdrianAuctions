@@ -36,9 +36,10 @@ const NFTCard: React.FC<NFTCardProps> = ({
       try {
         // Aquí normalmente consultaríamos el contrato ERC721 para obtener el tokenURI
         // y luego obtendríamos los metadatos. Por simplicidad, usamos datos falsos.
+        const tokenId = auction.tokenId.toString();
         setNftMetadata({
-          name: `NFT #${auction.tokenId.toString()}`,
-          image: `https://via.placeholder.com/300x300?text=NFT+${auction.tokenId.toString()}`
+          name: `NFT #${tokenId}`,
+          image: `https://via.placeholder.com/300x300?text=NFT+${tokenId}`
         });
       } catch (error) {
         console.error('Error al cargar metadatos:', error);
@@ -88,8 +89,8 @@ const NFTCard: React.FC<NFTCardProps> = ({
         <Image
           src={nftMetadata.image}
           alt={nftMetadata.name}
-          layout="fill"
-          objectFit="cover"
+          fill
+          style={{ objectFit: 'cover' }}
           priority
         />
       </div>

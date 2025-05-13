@@ -25,7 +25,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   useEffect(() => {
     const initWallet = async () => {
       if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
         if (accounts && accounts.length > 0) {
           const walletData = await connectWallet();
           setWalletState({

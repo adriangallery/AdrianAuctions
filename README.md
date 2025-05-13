@@ -37,7 +37,11 @@ npm install
 ```
 
 3. Configura las variables de entorno:
-Crea un archivo `.env.local` en la raíz del proyecto con el siguiente contenido:
+- Copia el archivo `.env.example` a `.env.local`:
+```bash
+cp .env.example .env.local
+```
+- Edita `.env.local` y añade tus propias claves de API:
 ```
 NEXT_PUBLIC_INFURA_API_KEY=tu_clave_api_de_infura
 NEXT_PUBLIC_CONTRACT_ADDRESS=0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99

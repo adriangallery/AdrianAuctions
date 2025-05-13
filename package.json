@@ -8,7 +8,7 @@
         "start": "next start",
         "lint": "next lint",
         "export": "next export",
-        "deploy": "next build && touch out/.nojekyll && gh-pages -d out -t true"
+        "deploy": "next build && gh-pages -d out -t true"
     },
     "dependencies": {
         "@metamask/providers": "^11.1.1",

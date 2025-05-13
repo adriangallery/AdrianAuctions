@@ -2,6 +2,11 @@
 
 Plataforma de subastas para NFTs en la red Base. Este proyecto permite a los usuarios crear subastas, ofertar y reclamar NFTs ganados.
 
+## Sitio en vivo
+
+Puedes acceder a la aplicación en vivo a través de GitHub Pages:
+[https://adriangallery.github.io/AdrianAuctions/](https://adriangallery.github.io/AdrianAuctions/)
+
 ## Características
 
 - Conexión con MetaMask y otras carteras compatibles con Web3
@@ -27,7 +32,7 @@ El contrato inteligente está desplegado en la red Base Mainnet:
 
 1. Clona el repositorio:
 ```bash
-git clone https://github.com/tu-usuario/AdrianAuctions.git
+git clone https://github.com/adriangallery/AdrianAuctions.git
 cd AdrianAuctions
 ```
 

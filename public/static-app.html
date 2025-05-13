@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adrian Auctions - Plataforma de Subastas NFT</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    :root {
+      --primary-color: #3E63DD;
+      --secondary-color: #6C757D;
+      --success-color: #28A745;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f8f9fa;
+      padding-top: 56px;
+    }
+    .navbar {
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .navbar-brand {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+    .hero {
+      background-color: white;
+      padding: 4rem 0;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .hero h1 {
+      color: var(--primary-color);
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      font-size: 1.25rem;
+      max-width: 800px;
+      margin: 0 auto 2rem;
+      color: #6c757d;
+    }
+    .card {
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .card-title {
+      color: var(--primary-color);
+    }
+    .feature-icon {
+      background-color: var(--primary-color);
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    .btn-primary:hover {
+      background-color: #2d4cba;
+      border-color: #2d4cba;
+    }
+    .btn-outline-primary {
+      color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+    .btn-outline-primary:hover {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    .stats {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 3rem 0;
+      margin: 3rem 0;
+    }
+    .stat-item {
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+    }
+    .stat-label {
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .footer {
+      background-color: #343a40;
+      color: #f8f9fa;
+      padding: 3rem 0;
+      margin-top: 3rem;
+    }
+    .auction-card-img {
+      height: 200px;
+      object-fit: cover;
+    }
+    .wallet-connect {
+      background-color: #f8f9fa;
+      padding: 2rem;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Barra de navegación -->
+  <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+    <div class="container">
+      <a class="navbar-brand" href="#">Adrian Auctions</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+          <li class="nav-item">
+            <a class="nav-link active" href="#">Inicio</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#explore">Explorar</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#myauctions">Mis Subastas</a>
+          </li>
+        </ul>
+        <button id="connectWalletBtn" class="btn btn-outline-primary">
+          Conectar Wallet
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>Bienvenido a Adrian Auctions</h1>
+      <p>Plataforma de subastas NFT en la red Base. Conecta tu wallet, explora subastas activas y empieza a ofertar.</p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="#explore" class="btn btn-primary">Explorar Subastas</a>
+        <a href="#myauctions" class="btn btn-outline-primary">Mis Subastas</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Estadísticas -->
+  <section class="stats">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4 stat-item">
+          <div class="stat-value">45</div>
+          <div class="stat-label">Subastas Activas</div>
+        </div>
+        <div class="col-md-4 stat-item">
+          <div class="stat-value">124</div>
+          <div class="stat-label">Usuarios</div>
+        </div>
+        <div class="col-md-4 stat-item">
+          <div class="stat-value">310</div>
+          <div class="stat-label">NFTs Subastados</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Características -->
+  <section class="container" id="features">
+    <div class="text-center mb-5">
+      <h2>¿Cómo funciona?</h2>
+      <p class="text-muted">Descubre lo fácil que es participar en subastas NFT</p>
+    </div>
+    <div class="row">
+      <div class="col-md-4">
+        <div class="card h-100 p-4">
+          <div class="feature-icon mx-auto">1</div>
+          <h3 class="card-title text-center">Conecta tu wallet</h3>
+          <p class="card-text text-center">Compatible con MetaMask y otras carteras Web3. Conecta en la red Base con un solo clic.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 p-4">
+          <div class="feature-icon mx-auto">2</div>
+          <h3 class="card-title text-center">Explora subastas</h3>
+          <p class="card-text text-center">Navega por las subastas activas de NFTs y descubre piezas únicas.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100 p-4">
+          <div class="feature-icon mx-auto">3</div>
+          <h3 class="card-title text-center">Oferta y gana</h3>
+          <p class="card-text text-center">Participa en subastas haciendo ofertas con ETH y gana NFTs exclusivos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Explorar Subastas -->
+  <section class="container mt-5" id="explore">
+    <div class="text-center mb-5">
+      <h2>Subastas destacadas</h2>
+      <p class="text-muted">Descubre las mejores oportunidades del momento</p>
+    </div>
+
+    <div class="wallet-connect">
+      <h3>Conecta tu wallet para ver subastas en tiempo real</h3>
+      <p>Necesitas conectar tu wallet para ver las subastas activas y poder realizar ofertas.</p>
+      <button id="connectWalletBtnExplore" class="btn btn-primary">
+        Conectar wallet
+      </button>
+    </div>
+
+    <div class="row">
+      <!-- Ejemplos de subastas -->
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://via.placeholder.com/400x200?text=NFT+Artwork" class="auction-card-img" alt="NFT Artwork">
+          <div class="card-body">
+            <h5 class="card-title">Crypto Punk #1234</h5>
+            <p class="card-text">Precio mínimo: 0.5 ETH</p>
+            <p class="card-text"><small class="text-muted">Termina en 1d 5h</small></p>
+            <button class="btn btn-primary w-100" disabled>Ofertar</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://via.placeholder.com/400x200?text=NFT+Landscape" class="auction-card-img" alt="NFT Landscape">
+          <div class="card-body">
+            <h5 class="card-title">Base Landscape #42</h5>
+            <p class="card-text">Precio mínimo: 0.3 ETH</p>
+            <p class="card-text"><small class="text-muted">Termina en 5h 30m</small></p>
+            <button class="btn btn-primary w-100" disabled>Ofertar</button>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <img src="https://via.placeholder.com/400x200?text=NFT+Character" class="auction-card-img" alt="NFT Character">
+          <div class="card-body">
+            <h5 class="card-title">Crypto Avatar #789</h5>
+            <p class="card-text">Precio mínimo: 0.8 ETH</p>
+            <p class="card-text"><small class="text-muted">Termina en 2d 12h</small></p>
+            <button class="btn btn-primary w-100" disabled>Ofertar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-4">
+      <a href="/AdrianAuctions/explore/" class="btn btn-outline-primary">Ver todas las subastas</a>
+    </div>
+  </section>
+
+  <!-- Mis Subastas -->
+  <section class="container mt-5" id="myauctions">
+    <div class="text-center mb-5">
+      <h2>Mis Subastas</h2>
+      <p class="text-muted">Gestiona tus subastas y ofertas</p>
+    </div>
+    
+    <div class="wallet-connect">
+      <h3>Conecta tu wallet para ver tus subastas</h3>
+      <p>Conecta tu wallet para administrar tus subastas creadas y ver en cuáles has participado.</p>
+      <button id="connectWalletBtnMyAuctions" class="btn btn-primary">
+        Conectar wallet
+      </button>
+    </div>
+    
+    <div class="text-center mt-4">
+      <a href="/AdrianAuctions/myauctions/" class="btn btn-outline-primary">Ir a Mis Subastas</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-4">
+          <h4>Adrian Auctions</h4>
+          <p>Plataforma de subastas NFT en la red Base.</p>
+        </div>
+        <div class="col-md-4">
+          <h4>Enlaces</h4>
+          <ul class="list-unstyled">
+            <li><a href="#" class="text-white">Inicio</a></li>
+            <li><a href="#explore" class="text-white">Explorar</a></li>
+            <li><a href="#myauctions" class="text-white">Mis Subastas</a></li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h4>Información del contrato</h4>
+          <p>Dirección: 0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99</p>
+          <p>Red: Base Mainnet (Chain ID: 8453)</p>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-12 text-center">
+          <p>© 2023 Adrian Auctions. Todos los derechos reservados.</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Funcionalidad básica para los botones de conectar wallet
+    document.getElementById('connectWalletBtn').addEventListener('click', function() {
+      alert('Esta es una versión estática. Para conectar tu wallet, por favor visita la aplicación principal.');
+    });
+    
+    document.getElementById('connectWalletBtnExplore').addEventListener('click', function() {
+      alert('Esta es una versión estática. Para conectar tu wallet, por favor visita la aplicación principal.');
+    });
+    
+    document.getElementById('connectWalletBtnMyAuctions').addEventListener('click', function() {
+      alert('Esta es una versión estática. Para conectar tu wallet, por favor visita la aplicación principal.');
+    });
+  </script>
+</body>
+</html> 

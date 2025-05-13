@@ -50,8 +50,10 @@ jobs:
           cp index.html out/index.html
           
           # Asegurar que los archivos existen
-          touch out/404.html
-          touch out/fallback.html
+          touch out/404.html out/fallback.html
+          
+          # Crear un archivo de prueba simple para verificar acceso
+          echo "La aplicación está desplegada correctamente." > out/test.txt
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3

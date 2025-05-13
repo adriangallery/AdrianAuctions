@@ -25,6 +25,12 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
       setLoading(true);
       const provider = getProvider();
       const contract = getContract(provider);
+      
+      if (!contract) {
+        console.error('No se pudo obtener el contrato');
+        setLoading(false);
+        return;
+      }
 
       // Obtener IDs de subastas activas
       const auctionIds = await contract.getActiveAuctions(pageNum, pageSize);
@@ -43,6 +49,7 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
       setPage(pageNum);
     } catch (error) {
       console.error('Error al cargar subastas:', error);
+      setHasMore(false);
     } finally {
       setLoading(false);
     }
@@ -66,6 +73,12 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
 
     try {
       const contract = getContract(walletState.signer);
+      
+      if (!contract) {
+        alert('No se pudo conectar con el contrato');
+        return;
+      }
+      
       const bidAmountWei = parseEther(amount);
       
       const tx = await contract.placeBid(auctionId, bidAmountWei);

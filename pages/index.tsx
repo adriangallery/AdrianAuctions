@@ -22,6 +22,11 @@ const Home: React.FC<HomeProps> = ({ walletState }) => {
       try {
         const provider = getProvider();
         const contract = getContract(provider);
+        
+        if (!contract) {
+          console.error('No se pudo obtener el contrato');
+          return;
+        }
 
         // Obtener contadores
         const activeCount = await contract.getActiveAuctionsCount();

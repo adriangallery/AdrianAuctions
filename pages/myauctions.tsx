@@ -38,6 +38,12 @@ const MyAuctionsPage: React.FC<MyAuctionsProps> = ({ walletState }) => {
       
       const contract = getContract(walletState.signer || ethers.getDefaultProvider());
       
+      if (!contract) {
+        console.error('No se pudo obtener el contrato');
+        setLoading(false);
+        return;
+      }
+      
       // Obtener IDs de subastas creadas por el usuario
       const createdAuctionIds = await contract.getUserAuctions(walletState.address);
       
@@ -73,6 +79,12 @@ const MyAuctionsPage: React.FC<MyAuctionsProps> = ({ walletState }) => {
 
     try {
       const contract = getContract(walletState.signer);
+      
+      if (!contract) {
+        alert('No se pudo conectar con el contrato');
+        return;
+      }
+      
       const bidAmountWei = parseEther(amount);
       
       const tx = await contract.placeBid(auctionId, bidAmountWei);
@@ -96,6 +108,11 @@ const MyAuctionsPage: React.FC<MyAuctionsProps> = ({ walletState }) => {
 
     try {
       const contract = getContract(walletState.signer);
+      
+      if (!contract) {
+        alert('No se pudo conectar con el contrato');
+        return;
+      }
       
       const tx = await contract.endAuction(auctionId);
       await tx.wait();

@@ -18,16 +18,18 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [page, setPage] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const pageSize = 10;
 
   const fetchAuctions = async (pageNum: number, reset: boolean = false) => {
     try {
       setLoading(true);
+      setError(null);
       const provider = getProvider();
       const contract = getContract(provider);
       
       if (!contract) {
-        console.error('No se pudo obtener el contrato');
+        setError('No se pudo obtener el contrato. Comprueba la conexión de red.');
         setLoading(false);
         return;
       }
@@ -45,10 +47,16 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
       // Obtener detalles de las subastas
       const auctionDetails = await contract.getManyAuctionDetails(auctionIds);
       
-      setAuctions(reset ? auctionDetails : [...auctions, ...auctionDetails]);
+      // Filtrar cualquier resultado nulo o inválido
+      const validAuctions = auctionDetails.filter((auction: Auction) => 
+        auction && auction.nftContract && auction.tokenId
+      );
+      
+      setAuctions(reset ? validAuctions : [...auctions, ...validAuctions]);
       setPage(pageNum);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al cargar subastas:', error);
+      setError(`Error al cargar subastas: ${error.message || 'Error desconocido'}`);
       setHasMore(false);
     } finally {
       setLoading(false);
@@ -57,6 +65,15 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
 
   useEffect(() => {
     fetchAuctions(0, true);
+    
+    // Actualizar regularmente las subastas activas
+    const intervalId = setInterval(() => {
+      if (!loading) {
+        fetchAuctions(0, true);
+      }
+    }, 60000); // Actualizar cada minuto
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleLoadMore = () => {
@@ -81,6 +98,9 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
       
       const bidAmountWei = parseEther(amount);
       
+      // Mostrar mensaje de espera
+      alert('Procesando la oferta, por favor confirma la transacción en tu wallet...');
+      
       const tx = await contract.placeBid(auctionId, bidAmountWei);
       await tx.wait();
       
@@ -98,11 +118,23 @@ const ExplorePage: React.FC<ExploreProps> = ({ walletState }) => {
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8">Explorar Subastas</h1>
       
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <p>{error}</p>
+          <button 
+            onClick={() => fetchAuctions(0, true)}
+            className="mt-2 bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+      
       {loading && auctions.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-500">Cargando subastas...</p>
         </div>
-      ) : auctions.length === 0 ? (
+      ) : auctions.length === 0 && !error ? (
         <div className="text-center py-12">
           <h2 className="text-xl font-medium text-gray-500">No hay subastas activas en este momento</h2>
           <p className="mt-2 text-gray-400">Vuelve más tarde para ver nuevas subastas</p>

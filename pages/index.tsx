@@ -16,15 +16,20 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ walletState }) => {
   const [activeAuctionsCount, setActiveAuctionsCount] = useState<number>(0);
   const [totalAuctions, setTotalAuctions] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchAuctionStats = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const provider = getProvider();
         const contract = getContract(provider);
         
         if (!contract) {
-          console.error('No se pudo obtener el contrato');
+          setError('No se pudo obtener el contrato. Comprueba la conexión de red.');
+          setLoading(false);
           return;
         }
 
@@ -34,12 +39,22 @@ const Home: React.FC<HomeProps> = ({ walletState }) => {
 
         setActiveAuctionsCount(activeCount.toNumber());
         setTotalAuctions(totalCount.toNumber());
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error al obtener estadísticas:', error);
+        setError(`Error al cargar los datos: ${error.message || 'Error desconocido'}`);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchAuctionStats();
+    
+    // Recargar estadísticas cada minuto
+    const intervalId = setInterval(() => {
+      fetchAuctionStats();
+    }, 60000);
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleConnectWallet = async () => {
@@ -54,16 +69,66 @@ const Home: React.FC<HomeProps> = ({ walletState }) => {
           Plataforma de subastas NFT en la red Base
         </p>
         
-        <div className="flex justify-center space-x-8 mb-12">
-          <div className="text-center">
-            <div className="text-3xl font-bold">{activeAuctionsCount}</div>
-            <div className="text-gray-500">Subastas Activas</div>
+        {error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-8 max-w-lg mx-auto">
+            <p>{error}</p>
+            <button 
+              onClick={() => {
+                setError(null);
+                setLoading(true);
+                const fetchData = async () => {
+                  try {
+                    const provider = getProvider();
+                    const contract = getContract(provider);
+                    
+                    if (!contract) {
+                      setError('No se pudo obtener el contrato. Comprueba la conexión de red.');
+                      return;
+                    }
+            
+                    const activeCount = await contract.getActiveAuctionsCount();
+                    const totalCount = await contract.auctionCounter();
+            
+                    setActiveAuctionsCount(activeCount.toNumber());
+                    setTotalAuctions(totalCount.toNumber());
+                    setError(null);
+                  } catch (err: any) {
+                    setError(`Error al recargar los datos: ${err.message || 'Error desconocido'}`);
+                  } finally {
+                    setLoading(false);
+                  }
+                };
+                fetchData();
+              }}
+              className="mt-2 bg-red-500 hover:bg-red-700 text-white py-1 px-2 rounded"
+            >
+              Reintentar
+            </button>
           </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold">{totalAuctions}</div>
-            <div className="text-gray-500">Subastas Totales</div>
+        ) : (
+          <div className="flex justify-center space-x-8 mb-12">
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {loading ? (
+                  <span className="opacity-50">...</span>
+                ) : (
+                  activeAuctionsCount
+                )}
+              </div>
+              <div className="text-gray-500">Subastas Activas</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold">
+                {loading ? (
+                  <span className="opacity-50">...</span>
+                ) : (
+                  totalAuctions
+                )}
+              </div>
+              <div className="text-gray-500">Subastas Totales</div>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex justify-center space-x-4">
           {!walletState?.isConnected ? (

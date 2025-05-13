@@ -13,6 +13,32 @@ const nextConfig = {
     experimental: {
       scrollRestoration: true,
     },
+    // Configuración para personalizar las rutas de exportación estática
+    exportPathMap: async function() {
+      return {
+        '/': { page: '/' },
+        '/explore': { page: '/explore' },
+        '/myauctions': { page: '/myauctions' },
+        '/404': { page: '/404' },
+      };
+    },
+    // Optimización de webpack para mejor compatibilidad con GitHub Pages
+    webpack: (config, { isServer }) => {
+      if (!isServer) {
+        // Resolver problemas con módulos de Node.js en el navegador
+        config.resolve.fallback = { 
+          ...config.resolve.fallback,
+          fs: false,
+          net: false,
+          tls: false,
+          crypto: require.resolve('crypto-browserify'),
+          stream: require.resolve('stream-browserify'),
+          path: require.resolve('path-browserify'),
+          os: require.resolve('os-browserify/browser'),
+        };
+      }
+      return config;
+    },
   };
   
   module.exports = nextConfig;

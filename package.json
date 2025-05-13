@@ -6,10 +6,11 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "next lint"
+        "lint": "next lint",
+        "export": "next export"
     },
     "dependencies": {
-        "@metamask/providers": "^22.1.0",
+        "@metamask/providers": "^11.1.1",
         "ethers": "^5.7.2",
         "next": "13.4.13",
         "react": "18.2.0",

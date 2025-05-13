@@ -7,7 +7,7 @@ export const connectWallet = async () => {
       await window.ethereum.request({ method: 'eth_requestAccounts' });
       
       // Obtener proveedor y signer
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const provider = new ethers.providers.Web3Provider(window.ethereum as any);
       const signer = provider.getSigner();
       const address = await signer.getAddress();
       
@@ -89,9 +89,10 @@ export const switchToBaseNetwork = async () => {
 
 export const listenToAccountChanges = (callback: (accounts: string[]) => void) => {
   if (typeof window.ethereum !== 'undefined') {
-    window.ethereum.on('accountsChanged', callback);
+    const ethereum = window.ethereum;
+    ethereum.on('accountsChanged', callback);
     return () => {
-      window.ethereum.removeListener('accountsChanged', callback);
+      ethereum.removeListener('accountsChanged', callback);
     };
   }
   return () => {};
@@ -99,9 +100,10 @@ export const listenToAccountChanges = (callback: (accounts: string[]) => void) =
 
 export const listenToChainChanges = (callback: (chainId: string) => void) => {
   if (typeof window.ethereum !== 'undefined') {
-    window.ethereum.on('chainChanged', callback);
+    const ethereum = window.ethereum;
+    ethereum.on('chainChanged', callback);
     return () => {
-      window.ethereum.removeListener('chainChanged', callback);
+      ethereum.removeListener('chainChanged', callback);
     };
   }
   return () => {};

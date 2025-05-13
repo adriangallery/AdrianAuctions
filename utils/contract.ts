@@ -30,17 +30,48 @@ export interface Auction {
 
 export const getContract = (provider: ethers.providers.Provider | ethers.Signer) => {
   const contractAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS as string;
+  if (!contractAddress) {
+    console.error('Dirección de contrato no encontrada');
+    return null;
+  }
   return new ethers.Contract(contractAddress, ABI, provider);
 };
 
 export const getProvider = () => {
-  return new ethers.providers.JsonRpcProvider(
-    `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`,
-    {
-      name: "base",
-      chainId: Number(process.env.NEXT_PUBLIC_BASE_CHAINID)
+  try {
+    const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
+    const chainId = Number(process.env.NEXT_PUBLIC_BASE_CHAINID || 8453);
+    
+    if (!infuraKey) {
+      console.warn('NEXT_PUBLIC_INFURA_API_KEY no encontrada, usando conexión alternativa');
+      // Usar un RPC público alternativo si Infura no está disponible
+      return new ethers.providers.JsonRpcProvider(
+        'https://mainnet.base.org',
+        {
+          name: "base",
+          chainId: chainId
+        }
+      );
     }
-  );
+    
+    return new ethers.providers.JsonRpcProvider(
+      `https://base-mainnet.infura.io/v3/${infuraKey}`,
+      {
+        name: "base",
+        chainId: chainId
+      }
+    );
+  } catch (error) {
+    console.error('Error al crear el proveedor:', error);
+    // Fallback a un RPC público
+    return new ethers.providers.JsonRpcProvider(
+      'https://mainnet.base.org',
+      {
+        name: "base",
+        chainId: 8453
+      }
+    );
+  }
 };
 
 export const getSigner = (provider: ethers.providers.Web3Provider) => {

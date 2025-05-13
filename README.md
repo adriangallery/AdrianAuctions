@@ -1,34 +1,51 @@
 # Adrian Auctions
 
-Plataforma de subastas para NFTs en la red Base. Este proyecto permite a los usuarios crear subastas, ofertar y reclamar NFTs ganados.
+Plataforma de subastas NFT en la red Base (Mainnet). Permite crear, ofertar y gestionar subastas de NFTs.
 
-## Acceso al proyecto
+## Acceso a la aplicación
 
-Puedes acceder al proyecto de dos formas:
-
-- **Repositorio de GitHub**: [https://github.com/adriangallery/AdrianAuctions](https://github.com/adriangallery/AdrianAuctions)
-- **Aplicación web**: [https://adriangallery.github.io/AdrianAuctions/](https://adriangallery.github.io/AdrianAuctions/)
+La aplicación está disponible directamente en:
+**[https://adriangallery.github.io/AdrianAuctions/](https://adriangallery.github.io/AdrianAuctions/)**
 
 ## Características
 
-- Conexión con MetaMask y otras carteras compatibles con Web3
+- Conectividad con wallets Web3 (MetaMask, etc.)
 - Exploración de subastas activas
-- Creación de subastas para NFTs
-- Realización de ofertas en subastas activas
-- Gestión de subastas creadas
-- Seguimiento de ofertas realizadas
+- Creación de nuevas subastas para tus NFTs
+- Realizar ofertas en ETH
+- Gestión de tus propias subastas
+- Reclamación de NFTs ganados
 
-## Tecnologías
+## Tecnologías utilizadas
 
 - Next.js
 - React
-- ethers.js (v5)
-- Solidity (Contrato inteligente desplegado en Base)
+- TypeScript
+- Ethers.js
+- Contrato de subastas en Solidity (desplegado en Base Mainnet)
 
-## Contrato desplegado
+## Desarrollo local
 
-El contrato inteligente está desplegado en la red Base Mainnet:
-- Dirección: 0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99
+Para ejecutar el proyecto localmente:
+
+```bash
+# Instalar dependencias
+npm install
+
+# Ejecutar servidor de desarrollo
+npm run dev
+```
+
+## Dirección del contrato
+
+El contrato de subastas está desplegado en la red Base Mainnet:
+```
+0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99
+```
+
+## Despliegue
+
+El proyecto se despliega automáticamente en GitHub Pages mediante GitHub Actions cuando se realizan cambios en la rama `main`.
 
 ## Configuración local
 

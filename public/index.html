@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Adrian Auctions - Plataforma de subastas NFT</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #F9FAFB;
+      color: #111827;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: #3E63DD;
+    }
+
+    p {
+      font-size: 1.25rem;
+      margin-bottom: 2rem;
+      max-width: 800px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      background-color: #3E63DD;
+      color: white;
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      transition: background-color 0.3s;
+    }
+
+    .cta-button:hover {
+      background-color: #2D4CBA;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin: 4rem 0;
+    }
+
+    .feature-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-card h2 {
+      color: #3E63DD;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>Adrian Auctions</h1>
+      <p>Plataforma de subastas NFT en la red Base. Conecta tu wallet, explora subastas activas y empieza a ofertar.</p>
+      <a href="explore/index.html" class="cta-button">Explorar Subastas</a>
+    </div>
+
+    <div class="features">
+      <div class="feature-card">
+        <h2>Conecta tu Wallet</h2>
+        <p>Compatible con MetaMask y otras carteras Web3. Conecta en la red Base con un solo clic.</p>
+      </div>
+      <div class="feature-card">
+        <h2>Explora Subastas</h2>
+        <p>Navega por las subastas activas de NFTs y descubre piezas únicas.</p>
+      </div>
+      <div class="feature-card">
+        <h2>Oferta y Gana</h2>
+        <p>Participa en subastas haciendo ofertas con tokens ADRIAN y gana NFTs exclusivos.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Redireccionar a la aplicación Next.js cuando esté lista
+    window.location.href = 'explore/';
+  </script>
+</body>
+</html> 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redireccionando - Adrian Auctions</title>
+  <script type="text/javascript">
+    // Redirigir a la página principal
+    var segmentCount = 1;
+    var location = window.location;
+    var pathName = location.pathname.substr(segmentCount);
+    var redirectPath = '/AdrianAuctions/';
+    
+    // En caso de una ruta específica, preservarla
+    if (pathName !== '/' && pathName !== '') {
+      redirectPath = '/AdrianAuctions' + pathName;
+    }
+    
+    window.location.href = redirectPath;
+  </script>
+</head>
+<body>
+  <p>Redireccionando a <a href="/AdrianAuctions/">Adrian Auctions</a>...</p>
+</body>
+</html> 

@@ -2,16 +2,43 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { connectWallet, switchToBaseNetwork } from '../utils/wallet';
 import { shortenAddress } from '../utils/contract';
+import { ethers } from 'ethers';
 
-const Navbar: React.FC = () => {
-  const [address, setAddress] = useState<string>('');
-  const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [isCorrectNetwork, setIsCorrectNetwork] = useState<boolean>(false);
+type WalletState = {
+  provider: ethers.providers.Web3Provider | null;
+  signer: ethers.Signer | null;
+  address: string;
+  isConnected: boolean;
+  isCorrectNetwork: boolean;
+};
 
+interface NavbarProps {
+  walletState?: WalletState;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ walletState }) => {
+  const [localWalletState, setLocalWalletState] = useState<{
+    address: string;
+    isConnected: boolean;
+    isCorrectNetwork: boolean;
+  }>({
+    address: '',
+    isConnected: false,
+    isCorrectNetwork: false
+  });
+
+  // Usar props de walletState si están disponibles, de lo contrario usar estado local
+  const address = walletState?.address || localWalletState.address;
+  const isConnected = walletState?.isConnected || localWalletState.isConnected;
+  const isCorrectNetwork = walletState?.isCorrectNetwork || localWalletState.isCorrectNetwork;
+
+  // Mantener el estado local solo si no recibimos props de walletState
   useEffect(() => {
-    // Verificar si ya hay una conexión previa en localStorage
+    if (walletState) return;
+
+    // Verificar si ya hay una conexión previa
     const checkConnection = async () => {
-      if (typeof window.ethereum !== 'undefined') {
+      if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
         const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
         if (accounts && accounts.length > 0) {
           handleConnectWallet();
@@ -22,7 +49,7 @@ const Navbar: React.FC = () => {
     checkConnection();
 
     // Escuchar cambios de cuenta
-    if (typeof window.ethereum !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
       window.ethereum.on('accountsChanged', () => {
         handleConnectWallet();
       });
@@ -33,24 +60,29 @@ const Navbar: React.FC = () => {
     }
 
     return () => {
-      if (typeof window.ethereum !== 'undefined') {
+      if (typeof window !== 'undefined' && typeof window.ethereum !== 'undefined') {
         window.ethereum.removeListener('accountsChanged', handleConnectWallet);
         window.ethereum.removeListener('chainChanged', handleConnectWallet);
       }
     };
-  }, []);
+  }, [walletState]);
 
   const handleConnectWallet = async () => {
     const walletData = await connectWallet();
-    setAddress(walletData.address);
-    setIsConnected(walletData.isConnected);
-    setIsCorrectNetwork(walletData.isCorrectNetwork);
+    setLocalWalletState({
+      address: walletData.address,
+      isConnected: walletData.isConnected,
+      isCorrectNetwork: walletData.isCorrectNetwork
+    });
   };
 
   const handleSwitchNetwork = async () => {
     const success = await switchToBaseNetwork();
     if (success) {
-      setIsCorrectNetwork(true);
+      setLocalWalletState(prev => ({
+        ...prev,
+        isCorrectNetwork: true
+      }));
     }
   };
 

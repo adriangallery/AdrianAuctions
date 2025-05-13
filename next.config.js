@@ -7,7 +7,9 @@ const nextConfig = {
     },
     output: 'export',
     basePath: process.env.NODE_ENV === 'production' ? '/AdrianAuctions' : '',
+    assetPrefix: process.env.NODE_ENV === 'production' ? '/AdrianAuctions/' : '',
     trailingSlash: true,
+    transpilePackages: ['ethers'],
   };
   
   module.exports = nextConfig;

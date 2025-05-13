@@ -21,21 +21,31 @@ export default function MyApp({ Component, pageProps }: AppProps) {
     isConnected: false,
     isCorrectNetwork: false
   });
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    // Aseguramos que el código sólo se ejecuta en el navegador
+    if (typeof window === 'undefined') return;
+
     const initWallet = async () => {
-      if (typeof window.ethereum !== 'undefined') {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
-        if (accounts && accounts.length > 0) {
-          const walletData = await connectWallet();
-          setWalletState({
-            provider: walletData.provider,
-            signer: walletData.signer,
-            address: walletData.address,
-            isConnected: walletData.isConnected,
-            isCorrectNetwork: walletData.isCorrectNetwork
-          });
+      try {
+        if (typeof window.ethereum !== 'undefined') {
+          const accounts = await window.ethereum.request({ method: 'eth_accounts' }) as string[];
+          if (accounts && accounts.length > 0) {
+            const walletData = await connectWallet();
+            setWalletState({
+              provider: walletData.provider,
+              signer: walletData.signer,
+              address: walletData.address,
+              isConnected: walletData.isConnected,
+              isCorrectNetwork: walletData.isCorrectNetwork
+            });
+          }
         }
+      } catch (error) {
+        console.error('Error al inicializar la wallet:', error);
+      } finally {
+        setIsInitialized(true);
       }
     };
 
@@ -43,25 +53,33 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
     // Configurar listeners para cambios de cuenta y red
     const accountsUnsubscribe = listenToAccountChanges(async () => {
-      const walletData = await connectWallet();
-      setWalletState({
-        provider: walletData.provider,
-        signer: walletData.signer,
-        address: walletData.address,
-        isConnected: walletData.isConnected,
-        isCorrectNetwork: walletData.isCorrectNetwork
-      });
+      try {
+        const walletData = await connectWallet();
+        setWalletState({
+          provider: walletData.provider,
+          signer: walletData.signer,
+          address: walletData.address,
+          isConnected: walletData.isConnected,
+          isCorrectNetwork: walletData.isCorrectNetwork
+        });
+      } catch (error) {
+        console.error('Error en el cambio de cuenta:', error);
+      }
     });
 
     const chainUnsubscribe = listenToChainChanges(async () => {
-      const walletData = await connectWallet();
-      setWalletState({
-        provider: walletData.provider,
-        signer: walletData.signer,
-        address: walletData.address,
-        isConnected: walletData.isConnected,
-        isCorrectNetwork: walletData.isCorrectNetwork
-      });
+      try {
+        const walletData = await connectWallet();
+        setWalletState({
+          provider: walletData.provider,
+          signer: walletData.signer,
+          address: walletData.address,
+          isConnected: walletData.isConnected,
+          isCorrectNetwork: walletData.isCorrectNetwork
+        });
+      } catch (error) {
+        console.error('Error en el cambio de red:', error);
+      }
     });
 
     return () => {
@@ -72,7 +90,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <>
-      <Navbar />
+      <Navbar walletState={walletState} />
       <main className="container mx-auto py-8">
         <Component {...pageProps} walletState={walletState} />
       </main>

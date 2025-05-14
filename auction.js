@@ -976,7 +976,9 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     } else if (!isOwner) {
       actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${auction.highestBid}', '${auction.reservePrice}', '${auction.nftContract}', ${auction.tokenId})">Place Bid</button>`;
     }
-  } else if (isOwner && !auction.active && auction.finalized && auction.highestBidder === ethers.constants.AddressZero) {
+  } else if (isOwner && !auction.active && auction.finalized && 
+            (auction.highestBidder === ethers.constants.AddressZero || auction.highestBid.lt(auction.reservePrice))) {
+    // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
     actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Relist Auction</button>`;
   }
   
@@ -1321,7 +1323,108 @@ function showAuctionDetails(auctionId) {
   console.log("Mostrar detalles de la subasta:", auctionId);
 }
 
-function createNewAuction() {
-  // Implementar para crear una nueva subasta
-  console.log("Crear nueva subasta");
+// Function to relist an auction (new function based on contract capability)
+async function relistAuction(auctionId, newReservePrice, durationHours) {
+  if (!window.ethereum || !currentAccount) {
+    showError("Please connect your wallet first");
+    return;
+  }
+  
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    
+    // Convert to contract parameters
+    const reservePriceWei = ethers.utils.parseEther(newReservePrice.toString());
+    const durationSeconds = durationHours * 3600;
+    
+    showSuccess("Sending transaction to relist auction...");
+    
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+    const tx = await contract.relistAuction(auctionId, reservePriceWei, durationSeconds);
+    
+    showSuccess("Confirming auction relisting...");
+    const receipt = await tx.wait();
+    
+    if (receipt.status === 0) {
+      throw new Error("Relisting transaction failed");
+    }
+    
+    // Find the AuctionCreated event to get the new auction ID
+    const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
+    let newAuctionId = null;
+    
+    if (auctionCreatedEvent && auctionCreatedEvent.args) {
+      newAuctionId = auctionCreatedEvent.args.auctionId.toString();
+      showSuccess(`NFT relisted in auction #${newAuctionId} successfully!`);
+    } else {
+      showSuccess("NFT relisted successfully!");
+    }
+    
+    // Refresh auction display
+    loadUserAuctions(currentAccount);
+    
+  } catch (error) {
+    console.error("Error relisting auction:", error);
+    showError(error.message || "Failed to relist auction");
+  }
+}
+
+// Function to show relist modal
+function showRelistModal(auctionId) {
+  // Create modal if it doesn't exist
+  if (!document.getElementById('relistModal')) {
+    const modalHTML = `
+      <div class="modal fade" id="relistModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Relist Auction</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="relistForm">
+                <input type="hidden" id="relistAuctionId" value="${auctionId}">
+                <div class="mb-3">
+                  <label for="newReservePrice" class="form-label">New Reserve Price (ADRIAN)</label>
+                  <input type="number" class="form-control" id="newReservePrice" min="0.000001" step="0.000001" required>
+                </div>
+                <div class="mb-3">
+                  <label for="newDuration" class="form-label">New Duration (hours)</label>
+                  <input type="number" class="form-control" id="newDuration" min="1" value="24" required>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn-action" id="relistAuctionBtn">Relist Auction</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Append modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Add event listener for relist button
+    document.getElementById('relistAuctionBtn').addEventListener('click', () => {
+      const auctionId = document.getElementById('relistAuctionId').value;
+      const newReservePrice = document.getElementById('newReservePrice').value;
+      const newDuration = document.getElementById('newDuration').value;
+      
+      relistAuction(auctionId, newReservePrice, newDuration);
+      
+      // Hide modal
+      const relistModal = bootstrap.Modal.getInstance(document.getElementById('relistModal'));
+      relistModal.hide();
+    });
+  } else {
+    // Update auction ID if modal already exists
+    document.getElementById('relistAuctionId').value = auctionId;
+  }
+  
+  // Show modal
+  const relistModal = new bootstrap.Modal(document.getElementById('relistModal'));
+  relistModal.show();
 } 

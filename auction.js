@@ -319,20 +319,46 @@ async function loadUserNFTs(userAddress) {
           // Extraer título/nombre - podría estar en nft.title o nft.name
           const title = nft.title || nft.name || `NFT #${tokenIdInt}`;
           
-          // Extraer image/media
-          let media = "";
-          if (nft.media && nft.media.length > 0 && nft.media[0].gateway) {
-            media = nft.media[0].gateway;
-          } else if (nft.image) {
-            media = nft.image;
+          // Extraer image/media - asegurarse de que sea una cadena de texto válida
+          let mediaUrl = "";
+          
+          // Intentar extraer la URL de la imagen de varias ubicaciones posibles
+          if (nft.media && Array.isArray(nft.media) && nft.media.length > 0) {
+            if (typeof nft.media[0].gateway === 'string') {
+              mediaUrl = nft.media[0].gateway;
+            } else if (nft.media[0].raw && typeof nft.media[0].raw === 'string') {
+              mediaUrl = nft.media[0].raw;
+            }
           }
+          
+          // Si no encontramos la URL en media, buscar en otras ubicaciones
+          if (!mediaUrl && nft.metadata && nft.metadata.image) {
+            if (typeof nft.metadata.image === 'string') {
+              mediaUrl = nft.metadata.image;
+            }
+          }
+          
+          // Si no encontramos la URL en metadata.image, buscar en image directamente
+          if (!mediaUrl && nft.image) {
+            if (typeof nft.image === 'string') {
+              mediaUrl = nft.image;
+            }
+          }
+          
+          // Verificar y corregir URLs de IPFS
+          if (mediaUrl.startsWith('ipfs://')) {
+            mediaUrl = mediaUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+          }
+          
+          // Imprimir para depuración
+          console.log(`NFT #${tokenIdInt} image URL:`, mediaUrl);
           
           return {
             contract: nft.contract.address,
             tokenId: tokenIdInt,
             title: title,
             description: nft.description || "",
-            media: media,
+            media: mediaUrl,
             metadata: nft.metadata
           };
         } catch (err) {
@@ -380,8 +406,10 @@ function renderNFTGrid(container) {
     nftCard.className = `auction-card ${isSelected ? 'border-primary' : ''}`;
     nftCard.onclick = () => selectNFT(index);
     
-    // Use NFT image from metadata if available, or placeholder
-    const imageUrl = nft.media || "https://placehold.co/400x400?text=NFT+Image";
+    // Asegurarse de que la URL de la imagen sea una cadena válida
+    const imageUrl = (typeof nft.media === 'string' && nft.media) 
+      ? nft.media 
+      : "https://placehold.co/400x400?text=NFT+Image";
     
     nftCard.innerHTML = `
       <div class="nft-image-container">
@@ -410,8 +438,13 @@ function selectNFT(index) {
   const selectedNftDisplay = document.getElementById("selectedNftDisplay");
   const auctionDetails = document.getElementById("auction-details");
   
+  // Asegurar que la URL de la imagen es válida
+  const imageUrl = (typeof selectedNFT.media === 'string' && selectedNFT.media) 
+    ? selectedNFT.media 
+    : "https://placehold.co/400x400?text=NFT+Image";
+  
   selectedNftDisplay.innerHTML = `
-    <img src="${selectedNFT.media || 'https://placehold.co/400x400?text=NFT+Image'}" class="me-3" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+    <img src="${imageUrl}" class="me-3" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
     <div>
       <strong>${selectedNFT.title}</strong>
       <div>Token ID: ${selectedNFT.tokenId}</div>

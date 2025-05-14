@@ -223,6 +223,130 @@ async function connectWallet() {
   }
 }
 
+// Load NFTs from user's wallet using Alchemy API
+async function loadUserNFTs(userAddress) {
+  const loadingElement = document.getElementById("loading-nfts");
+  const noNftsMessage = document.getElementById("no-nfts");
+  const nftSelection = document.getElementById("nft-selection");
+  const nftList = document.getElementById("nftList");
+  const auctionDetails = document.getElementById("auction-details");
+  
+  // Reset state
+  ownedNFTs = [];
+  selectedNFT = null;
+  
+  // Show loading indicator
+  loadingElement.style.display = "block";
+  noNftsMessage.style.display = "none";
+  nftSelection.style.display = "none";
+  auctionDetails.style.display = "none";
+  nftList.innerHTML = "";
+  
+  try {
+    // Check if Alchemy is initialized
+    if (!alchemyWeb3) {
+      if (!initAlchemyWeb3()) {
+        throw new Error("Alchemy Web3 could not be initialized");
+      }
+    }
+    
+    // Use Alchemy's getNfts method to get all NFTs owned by the user
+    const alchemyResponse = await fetch(`${ALCHEMY_RPC_URL}/getNFTs/?owner=${userAddress}`);
+    
+    if (!alchemyResponse.ok) {
+      throw new Error("Failed to fetch NFTs from Alchemy API");
+    }
+    
+    const nftsData = await alchemyResponse.json();
+    
+    // Process NFTs
+    if (nftsData.ownedNfts && nftsData.ownedNfts.length > 0) {
+      ownedNFTs = nftsData.ownedNfts.map(nft => {
+        return {
+          contract: nft.contract.address,
+          tokenId: parseInt(nft.id.tokenId, 16),
+          title: nft.title || `NFT #${parseInt(nft.id.tokenId, 16)}`,
+          description: nft.description || "",
+          media: nft.media && nft.media.length > 0 ? nft.media[0].gateway : "",
+          metadata: nft.metadata
+        };
+      });
+      
+      // Display NFTs
+      renderNFTGrid(nftList);
+      loadingElement.style.display = "none";
+      nftSelection.style.display = "block";
+    } else {
+      loadingElement.style.display = "none";
+      noNftsMessage.style.display = "block";
+    }
+  } catch (error) {
+    console.error("Error loading NFTs:", error);
+    showError("Failed to load your NFTs. Please try again later.");
+    loadingElement.style.display = "none";
+    noNftsMessage.style.display = "block";
+  }
+}
+
+// Render NFT grid for selection
+function renderNFTGrid(container) {
+  container.innerHTML = "";
+  
+  ownedNFTs.forEach((nft, index) => {
+    const isSelected = selectedNFT && selectedNFT.contract === nft.contract && selectedNFT.tokenId === nft.tokenId;
+    
+    const nftCard = document.createElement("div");
+    nftCard.className = `auction-card ${isSelected ? 'border-primary' : ''}`;
+    nftCard.onclick = () => selectNFT(index);
+    
+    // Use NFT image from metadata if available, or placeholder
+    const imageUrl = nft.media || "https://placehold.co/400x400?text=NFT+Image";
+    
+    nftCard.innerHTML = `
+      <div class="nft-image-container">
+        <img src="${imageUrl}" class="nft-image" alt="${nft.title}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+      </div>
+      <div class="token-info">
+        <h3 class="auction-title">${nft.title}</h3>
+        <p>Contract: ${formatAddress(nft.contract)}</p>
+        <p>Token ID: ${nft.tokenId}</p>
+        ${isSelected ? '<span class="auction-status status-live">Selected</span>' : ''}
+      </div>
+    `;
+    
+    container.appendChild(nftCard);
+  });
+}
+
+// Select NFT for auction
+function selectNFT(index) {
+  selectedNFT = ownedNFTs[index];
+  
+  // Update display
+  renderNFTGrid(document.getElementById("nftList"));
+  
+  // Show selected NFT in the auction details
+  const selectedNftDisplay = document.getElementById("selectedNftDisplay");
+  const auctionDetails = document.getElementById("auction-details");
+  
+  selectedNftDisplay.innerHTML = `
+    <img src="${selectedNFT.media || 'https://placehold.co/400x400?text=NFT+Image'}" class="me-3" style="width: 50px; height: 50px; object-fit: contain;" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+    <div>
+      <strong>${selectedNFT.title}</strong>
+      <div>Token ID: ${selectedNFT.tokenId}</div>
+    </div>
+  `;
+  
+  // Set hidden fields
+  document.getElementById("nftContract").value = selectedNFT.contract;
+  document.getElementById("tokenId").value = selectedNFT.tokenId;
+  
+  // Show auction details
+  auctionDetails.style.display = "block";
+  
+  showSuccess("NFT selected for auction");
+}
+
 // Show error message
 function showError(message) {
   const errorAlert = document.getElementById("errorAlert");

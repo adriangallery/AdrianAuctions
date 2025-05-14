@@ -1557,140 +1557,69 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     console.log("Provider y signer inicializados correctamente");
     showSuccess("Iniciando proceso de creación de subasta...");
     
-    // 1. Verificar aprobación para el token específico, no para toda la colección
+    // 1. Verificar aprobación ÚNICAMENTE para el token específico
     console.log("Creando instancia de contrato NFT:", nftContract);
     const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
     
-    // Verificar si este token específico ya está aprobado
     console.log("Verificando aprobación específica para el token ID:", tokenId);
-    
-    let isTokenApproved = false;
-    let useGeneralApproval = false;
-    
+    let approvedAddress;
     try {
-      // Intentar verificar aprobación específica del token
-      const approvedAddress = await nftContractInstance.getApproved(tokenId);
+      approvedAddress = await nftContractInstance.getApproved(tokenId);
       console.log("Dirección aprobada actual para el token:", approvedAddress);
-      
-      // El NFT está aprobado si el operador es el contrato de subastas
-      isTokenApproved = (approvedAddress.toLowerCase() === CONTRACT_ADDRESS.toLowerCase());
-      
-      if (!isTokenApproved) {
-        // Verificar también la aprobación general como plan B
-        const isApprovedForAll = await nftContractInstance.isApprovedForAll(currentAccount, CONTRACT_ADDRESS);
-        console.log("¿Tiene aprobación para todos?:", isApprovedForAll);
-        
-        // Si hay aprobación general, podemos usarla
-        if (isApprovedForAll) {
-          isTokenApproved = true;
-          useGeneralApproval = true;
-          console.log("Se usará la aprobación general existente");
-        }
-      }
     } catch (error) {
-      console.warn("Error al verificar la aprobación específica del token. Posiblemente no implementa getApproved:", error);
-      
-      // Si falla getApproved, intentamos verificar solo isApprovedForAll como último recurso
-      try {
-        const isApprovedForAll = await nftContractInstance.isApprovedForAll(currentAccount, CONTRACT_ADDRESS);
-        console.log("¿Tiene aprobación para todos? (fallback):", isApprovedForAll);
-        
-        if (isApprovedForAll) {
-          isTokenApproved = true;
-          useGeneralApproval = true;
-          console.log("Se usará la aprobación general existente (fallback)");
-        }
-      } catch (secondError) {
-        console.error("Error al verificar isApprovedForAll:", secondError);
-        // Si también falla esto, asumimos que no tiene aprobación
-        isTokenApproved = false;
-      }
+      console.error("Error al verificar aprobación del token:", error);
+      throw new Error("No se pudo verificar la aprobación del NFT. El contrato puede no ser compatible con ERC721 estándar.");
     }
     
-    if (!isTokenApproved) {
-      // Mostrar alerta de seguridad al usuario
-      if (!confirm(`AVISO DE SEGURIDAD: Está a punto de aprobar la transferencia de su NFT #${tokenId}. Esta acción solo afectará a este NFT específico y es necesaria para crear la subasta. ¿Desea continuar?`)) {
-        showError("Operación cancelada por el usuario");
-        return;
-      }
-      
-      showSuccess("Solicitando aprobación para usar este NFT específico...");
+    const isApproved = (approvedAddress.toLowerCase() === CONTRACT_ADDRESS.toLowerCase());
+    console.log("¿El token está aprobado específicamente?:", isApproved);
+    
+    // 2. Si no está aprobado, aprobar ÚNICAMENTE este token específico
+    if (!isApproved) {
+      console.log("Token no aprobado, solicitando aprobación específica");
+      showSuccess("Aprobando NFT específico para la subasta...");
       
       try {
-        // Intentar primero con aprobación específica (más segura)
-        try {
-          console.log("Intentando aprobación específica para el token...");
-          const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenId);
-          console.log("Transacción de aprobación específica enviada:", approveTx.hash);
-          
-          // Esperamos a que se confirme la transacción
-          showSuccess("Confirmando aprobación de NFT...");
-          console.log("Esperando confirmación de la aprobación...");
-          
-          const approveReceipt = await approveTx.wait();
-          console.log("Recibo de aprobación:", approveReceipt);
-          
-          if (approveReceipt.status === 0) {
-            throw new Error("Falló la transacción de aprobación específica");
-          }
-          
-          // Verificar que la aprobación se realizó correctamente
-          const newApprovedAddress = await nftContractInstance.getApproved(tokenId);
-          console.log("Nueva dirección aprobada:", newApprovedAddress);
-          
-          if (newApprovedAddress.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
-            throw new Error("La aprobación específica no se completó correctamente");
-          }
-          
-          showSuccess(`NFT #${tokenId} aprobado correctamente (aprobación específica)`);
-        } catch (approveError) {
-          console.warn("Error al aprobar token específico, se requerirá confirmación para usar setApprovalForAll:", approveError);
-          
-          // Si falla la aprobación específica, pedir confirmación adicional para setApprovalForAll
-          if (!confirm(`ADVERTENCIA DE SEGURIDAD: No se pudo aprobar solo este NFT específico. Como alternativa, puede aprobar TODOS sus NFTs de esta colección. Esto otorgará permisos amplios al contrato. ¿Desea continuar con este nivel de aprobación?`)) {
-            showError("Operación cancelada por el usuario");
-            return;
-          }
-          
-          // Si acepta, usamos setApprovalForAll como último recurso
-          console.log("Intentando aprobación general para todos los tokens...");
-          const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true);
-          console.log("Transacción de aprobación general enviada:", approveTx.hash);
-          
-          // Esperamos a que se confirme la transacción
-          showSuccess("Confirmando aprobación general de NFTs...");
-          const approveReceipt = await approveTx.wait();
-          console.log("Recibo de aprobación general:", approveReceipt);
-          
-          if (approveReceipt.status === 0) {
-            throw new Error("Falló la transacción de aprobación general");
-          }
-          
-          // Verificar de nuevo la aprobación para confirmar
-          const isApprovedForAllAfter = await nftContractInstance.isApprovedForAll(currentAccount, CONTRACT_ADDRESS);
-          console.log("¿Aprobación general después de la transacción?:", isApprovedForAllAfter);
-          
-          if (!isApprovedForAllAfter) {
-            throw new Error("La transacción de aprobación general se completó pero no se concedió el permiso");
-          }
-          
-          showSuccess("NFT aprobado correctamente (aprobación general)");
+        const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenId);
+        console.log("Transacción de aprobación específica enviada:", approveTx.hash);
+        
+        showSuccess("Confirmando aprobación del NFT...");
+        const approveReceipt = await approveTx.wait();
+        console.log("Recibo de aprobación:", approveReceipt);
+        
+        if (approveReceipt.status === 0) {
+          throw new Error("La transacción de aprobación falló");
         }
+        
+        // Verificar que la aprobación se realizó correctamente
+        const newApprovedAddress = await nftContractInstance.getApproved(tokenId);
+        console.log("Nueva dirección aprobada:", newApprovedAddress);
+        
+        if (newApprovedAddress.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
+          throw new Error("La aprobación no se completó correctamente. La dirección aprobada no coincide con el contrato de subastas.");
+        }
+        
+        showSuccess(`NFT #${tokenId} aprobado correctamente`);
       } catch (error) {
-        console.error("Error en el proceso de aprobación:", error);
-        throw new Error("No se pudo obtener la aprobación para el NFT. Por favor, verifica que eres el propietario del token.");
+        console.error("Error al aprobar el token específico:", error);
+        
+        // Manejar errores específicos de manera más clara
+        if (error.code === 4001) {
+          throw new Error("Aprobación rechazada por el usuario");
+        } else if (error.message.includes("invalid address")) {
+          throw new Error("Dirección de contrato inválida. Verifique la dirección del NFT.");
+        } else if (error.message.includes("caller is not owner")) {
+          throw new Error("No eres el propietario de este NFT. Solo el propietario puede aprobarlo.");
+        } else {
+          throw new Error("Error al aprobar el NFT: " + (error.message || "Error desconocido"));
+        }
       }
     } else {
-      if (useGeneralApproval) {
-        console.log("El NFT está disponible mediante una aprobación general anterior");
-        showSuccess(`El NFT #${tokenId} ya está disponible para el contrato (aprobación general)`);
-      } else {
-        console.log("El NFT específico ya estaba aprobado previamente");
-        showSuccess(`El NFT #${tokenId} ya está aprobado específicamente para el contrato`);
-      }
+      console.log("El NFT específico ya estaba aprobado previamente");
+      showSuccess(`El NFT #${tokenId} ya está aprobado para el contrato`);
     }
     
-    // 2. Crear la subasta
+    // 3. Crear la subasta
     console.log("Creando instancia del contrato de subastas:", CONTRACT_ADDRESS);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
@@ -1790,12 +1719,21 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       // Extraer el mensaje de error de la blockchain si está disponible
       const revertReason = error.data?.message || error.message;
       errorMessage = `La transacción falló: ${revertReason}`;
+    } else if (error.message.includes("not owner")) {
+      errorMessage = "No eres el propietario de este NFT. Solo el propietario puede crear subastas.";
+    } else if (error.message.includes("token doesn't exist")) {
+      errorMessage = "Este token NFT no existe o no es válido.";
+    } else if (error.message.includes("already approved")) {
+      errorMessage = "Este NFT ya está en una subasta activa.";
     } else if (error.message.includes("transaction failed")) {
       errorMessage = "La transacción falló. Revisa la consola para más detalles.";
     } else if (error.message.includes("user rejected")) {
       errorMessage = "Transacción rechazada por el usuario.";
     } else if (error.message.includes("gas")) {
       errorMessage = "Error con el gas de la transacción. Puede que el límite sea demasiado bajo.";
+    } else {
+      // Usar el mensaje de error personalizado si existe
+      errorMessage = error.message || errorMessage;
     }
     
     console.error("Mensaje de error mostrado al usuario:", errorMessage);

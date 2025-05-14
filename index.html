@@ -38,23 +38,122 @@
   <div class="container py-5">
     <h1 class="mb-4 text-center">Adrian Auction DApp</h1>
     <div class="text-center mb-4">
-      <button id="connectBtn" class="btn btn-primary">Connect Wallet</button>
+      <button id="connectBtn" class="btn btn-primary">Conectar Wallet</button>
       <p id="walletAddress" class="mt-2"></p>
     </div>
-    <div class="text-center mb-3">
-      <select id="filterSelect" class="form-select w-auto d-inline-block">
-        <option value="all">All Auctions</option>
-        <option value="active">Only Active</option>
-        <option value="reserveMet">Reserve Met</option>
-        <option value="endingSoon">Ending Soon</option>
-      </select>
-      <button class="btn btn-outline-dark ms-2" onclick="loadActiveAuctions()">Apply Filter</button>
-    </div>
-    <div id="auctionsList" class="row mt-4">
-      <!-- Rendered dynamically by auction.js -->
+    
+    <ul class="nav nav-tabs mb-4" id="auctionTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="explore-tab" data-bs-toggle="tab" data-bs-target="#explore" type="button" role="tab">Explorar Subastas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="myauctions-tab" data-bs-toggle="tab" data-bs-target="#myauctions" type="button" role="tab">Mis Subastas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="mybids-tab" data-bs-toggle="tab" data-bs-target="#mybids" type="button" role="tab">Mis Ofertas</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Crear Subasta</button>
+      </li>
+    </ul>
+    
+    <div class="tab-content" id="auctionTabsContent">
+      <!-- Tab: Explorar Subastas -->
+      <div class="tab-pane fade show active" id="explore" role="tabpanel">
+        <div class="text-center mb-3">
+          <select id="filterSelect" class="form-select w-auto d-inline-block">
+            <option value="all">Todas las Subastas</option>
+            <option value="active">Solo Activas</option>
+            <option value="reserveMet">Reserve Cubierta</option>
+            <option value="endingSoon">Finalizando Pronto</option>
+          </select>
+          <button class="btn btn-outline-dark ms-2" onclick="loadActiveAuctions()">Aplicar Filtro</button>
+        </div>
+        <div id="auctionsList" class="row mt-4">
+          <!-- Renderizado dinámicamente por auction.js -->
+        </div>
+      </div>
+      
+      <!-- Tab: Mis Subastas -->
+      <div class="tab-pane fade" id="myauctions" role="tabpanel">
+        <div class="alert alert-info">
+          Conecta tu wallet para ver tus subastas creadas.
+        </div>
+        <div id="myAuctionsList" class="row mt-4">
+          <!-- Renderizado dinámicamente por auction.js -->
+        </div>
+      </div>
+      
+      <!-- Tab: Mis Ofertas -->
+      <div class="tab-pane fade" id="mybids" role="tabpanel">
+        <div class="alert alert-info">
+          Conecta tu wallet para ver tus ofertas activas.
+        </div>
+        <div id="myBidsList" class="row mt-4">
+          <!-- Renderizado dinámicamente por auction.js -->
+        </div>
+      </div>
+      
+      <!-- Tab: Crear Subasta -->
+      <div class="tab-pane fade" id="create" role="tabpanel">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title">Crear Nueva Subasta</h5>
+            <form id="createAuctionForm">
+              <div class="mb-3">
+                <label for="nftContract" class="form-label">Dirección del Contrato NFT</label>
+                <input type="text" class="form-control" id="nftContract" required>
+              </div>
+              <div class="mb-3">
+                <label for="tokenId" class="form-label">Token ID</label>
+                <input type="number" class="form-control" id="tokenId" min="1" required>
+              </div>
+              <div class="mb-3">
+                <label for="reservePrice" class="form-label">Precio de Reserva (ADRIAN)</label>
+                <input type="number" class="form-control" id="reservePrice" min="0.000001" step="0.000001" required>
+              </div>
+              <div class="mb-3">
+                <label for="duration" class="form-label">Duración (horas)</label>
+                <input type="number" class="form-control" id="duration" min="1" value="24" required>
+              </div>
+              <button type="submit" class="btn btn-primary">Crear Subasta</button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
+  <!-- Modal para ofertar -->
+  <div class="modal fade" id="bidModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Realizar Oferta</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="bidForm">
+            <input type="hidden" id="bidAuctionId">
+            <div class="mb-3">
+              <label for="bidAmount" class="form-label">Monto (ADRIAN)</label>
+              <input type="number" class="form-control" id="bidAmount" required>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>Oferta mínima: <span id="minBid">0</span> ADRIAN</span>
+              <span>Precio de reserva: <span id="reservePriceDisplay">0</span> ADRIAN</span>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="placeBidBtn">Ofertar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
   let currentAccount = null;
 
@@ -63,14 +162,61 @@
       try {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
         currentAccount = accounts[0];
-        document.getElementById("walletAddress").innerText = `Connected: ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
+        document.getElementById("walletAddress").innerText = `Conectado: ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
         await loadActiveAuctions();
+        
+        // Cargar datos específicos del usuario
+        if (document.getElementById("myauctions-tab").classList.contains("active")) {
+          loadUserAuctions(currentAccount);
+        }
+        if (document.getElementById("mybids-tab").classList.contains("active")) {
+          loadUserBids(currentAccount);
+        }
       } catch (err) {
-        console.error("User denied wallet connection");
+        console.error("Usuario rechazó la conexión");
       }
     } else {
-      alert("MetaMask not detected!");
+      alert("MetaMask no detectado!");
     }
+  });
+
+  // Handlers de pestañas
+  document.getElementById("myauctions-tab").addEventListener("click", () => {
+    if (currentAccount) {
+      loadUserAuctions(currentAccount);
+    }
+  });
+  
+  document.getElementById("mybids-tab").addEventListener("click", () => {
+    if (currentAccount) {
+      loadUserBids(currentAccount);
+    }
+  });
+  
+  // Form handler para crear subasta
+  document.getElementById("createAuctionForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!currentAccount) {
+      alert("Por favor, conecta tu wallet primero");
+      return;
+    }
+    
+    const nftContract = document.getElementById("nftContract").value;
+    const tokenId = document.getElementById("tokenId").value;
+    const reservePrice = document.getElementById("reservePrice").value;
+    const duration = document.getElementById("duration").value;
+    
+    createNewAuction(nftContract, tokenId, reservePrice, duration);
+  });
+  
+  // Setup para modal de ofertas
+  document.getElementById("placeBidBtn").addEventListener("click", async () => {
+    const auctionId = document.getElementById("bidAuctionId").value;
+    const bidAmount = document.getElementById("bidAmount").value;
+    
+    placeBid(auctionId, bidAmount);
+    const modal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
+    modal.hide();
   });
 
   async function loadActiveAuctions() {
@@ -113,28 +259,52 @@
 
       const cardClass = `card text-dark ${endsSoon ? 'border-warning bg-warning-subtle' : ''} ${passedReserve ? 'border-success bg-success-subtle' : ''}`.trim();
       const statusTag = `
-        ${endsSoon ? '<span class="badge bg-warning text-dark me-1">🔥 Ending Soon</span>' : ''}
-        ${passedReserve ? '<span class="badge bg-success text-white">✅ Reserve Met</span>' : ''}
+        ${endsSoon ? '<span class="badge bg-warning text-dark me-1">🔥 Finalizando Pronto</span>' : ''}
+        ${passedReserve ? '<span class="badge bg-success text-white">✅ Reserva Cubierta</span>' : ''}
       `;
 
       const html = `
         <div class="col-md-4 mb-3">
           <div class="${cardClass}">
             <div class="card-body">
-              <h5 class="card-title">Auction</h5>
+              <h5 class="card-title">Subasta #${index + 1}</h5>
               <p>${statusTag}</p>
-              <p>NFT: ${a.nftContract}</p>
+              <p>NFT: ${formatAddress(a.nftContract)}</p>
               <p>Token ID: ${a.tokenId}</p>
-              <p>Seller: ${a.seller}</p>
-              <p>Reserve: ${ethers.utils.formatUnits(a.reservePrice, 18)} ADRIAN</p>
-              <p>Highest Bid: ${ethers.utils.formatUnits(a.highestBid, 18)} ADRIAN</p>
-              <p>Ends: ${new Date(a.endTime * 1000).toLocaleString()}</p>
-              <p>Status: ${a.active ? "Active" : "Inactive"} ${a.finalized ? "(Finalized)" : ""}</p>
+              <p>Vendedor: ${formatAddress(a.seller)}</p>
+              <p>Reserva: ${formatEther(a.reservePrice)} ADRIAN</p>
+              <p>Oferta Más Alta: ${formatEther(a.highestBid)} ADRIAN</p>
+              <p>Tiempo Restante: ${formatTimeRemaining(a.endTime)}</p>
+              <p>Estado: ${a.active ? "Activa" : "Inactiva"} ${a.finalized ? "(Finalizada)" : ""}</p>
+              
+              <div class="d-flex justify-content-between mt-3">
+                ${a.active && !a.finalized ? `
+                  <button class="btn btn-primary btn-sm" onclick="openBidModal(${index}, ${a.highestBid}, ${a.reservePrice})">Ofertar</button>
+                  ${currentAccount && currentAccount.toLowerCase() === a.seller.toLowerCase() && a.endTime < now ? 
+                    `<button class="btn btn-success btn-sm" onclick="finalizeAuction(${index})">Finalizar</button>` : ''}
+                ` : ''}
+              </div>
             </div>
           </div>
         </div>`;
       container.innerHTML += html;
     });
+  }
+
+  function openBidModal(auctionId, currentBid, reservePrice) {
+    document.getElementById("bidAuctionId").value = auctionId;
+    
+    const minBidAmount = currentBid > 0 ? 
+      parseFloat(ethers.utils.formatUnits(currentBid, 18)) + 0.000001 : 
+      parseFloat(ethers.utils.formatUnits(reservePrice, 18));
+    
+    document.getElementById("minBid").textContent = minBidAmount.toFixed(6);
+    document.getElementById("reservePriceDisplay").textContent = ethers.utils.formatUnits(reservePrice, 18);
+    document.getElementById("bidAmount").min = minBidAmount;
+    document.getElementById("bidAmount").value = minBidAmount;
+    
+    const modal = new bootstrap.Modal(document.getElementById('bidModal'));
+    modal.show();
   }
 </script>
 </body>

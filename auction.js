@@ -261,9 +261,6 @@ async function loadUserNFTs(userAddress) {
   nftList.innerHTML = "";
   
   try {
-    // Check if we're on Base Network
-    if (!(await checkBaseNetwork())) return;
-    
     // Check if Alchemy is initialized
     if (!alchemyWeb3) {
       if (!initAlchemyWeb3()) {
@@ -271,7 +268,7 @@ async function loadUserNFTs(userAddress) {
       }
     }
     
-    // Use Alchemy's getNftsForOwner method to get all NFTs owned by the user
+    // Use Alchemy's getNFTsForOwner method to get all NFTs owned by the user
     const alchemyResponse = await fetch(`https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=100`);
     
     if (!alchemyResponse.ok) {
@@ -284,27 +281,52 @@ async function loadUserNFTs(userAddress) {
     // Process NFTs
     if (nftsData.ownedNfts && nftsData.ownedNfts.length > 0) {
       ownedNFTs = nftsData.ownedNfts.map(nft => {
-        return {
-          contract: nft.contract.address,
-          tokenId: parseInt(nft.id.tokenId, 16),
-          title: nft.title || `NFT #${parseInt(nft.id.tokenId, 16)}`,
-          description: nft.description || "",
-          media: nft.media && nft.media.length > 0 ? nft.media[0].gateway : "",
-          metadata: nft.metadata
-        };
-      });
+        // Verificar que existan todas las propiedades necesarias
+        if (!nft || !nft.contract || !nft.id || !nft.id.tokenId) {
+          console.error("NFT data format error:", nft);
+          return null;
+        }
+        
+        try {
+          const tokenIdHex = nft.id.tokenId;
+          const tokenIdInt = parseInt(tokenIdHex, 16);
+          
+          return {
+            contract: nft.contract.address,
+            tokenId: tokenIdInt,
+            title: nft.title || `NFT #${tokenIdInt}`,
+            description: nft.description || "",
+            media: nft.media && nft.media.length > 0 ? nft.media[0].gateway : "",
+            metadata: nft.metadata
+          };
+        } catch (err) {
+          console.error("Error processing NFT:", err, nft);
+          return null;
+        }
+      }).filter(nft => nft !== null); // Filtrar los NFTs que fallaron al procesarse
       
-      // Display NFTs
-      renderNFTGrid(nftList);
-      loadingElement.style.display = "none";
-      nftSelection.style.display = "block";
+      if (ownedNFTs.length > 0) {
+        // Display NFTs
+        renderNFTGrid(nftList);
+        loadingElement.style.display = "none";
+        nftSelection.style.display = "block";
+      } else {
+        loadingElement.style.display = "none";
+        noNftsMessage.style.display = "block";
+      }
     } else {
       loadingElement.style.display = "none";
       noNftsMessage.style.display = "block";
     }
   } catch (error) {
     console.error("Error loading NFTs:", error);
-    if (error.response) console.error("Response data:", await error.response.text());
+    if (error.response) {
+      try {
+        console.error("Response data:", await error.response.text());
+      } catch (e) {
+        console.error("Could not read response data");
+      }
+    }
     showError("Failed to load your NFTs. Please try again later.");
     loadingElement.style.display = "none";
     noNftsMessage.style.display = "block";

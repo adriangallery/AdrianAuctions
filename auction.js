@@ -9,16 +9,27 @@ const RPC_URL = ALCHEMY_RPC_URL;
 
 // Contract ABIs
 const AUCTION_ABI = [
+  // Read functions
   "function getActiveAuctionsCount() view returns (uint256)",
   "function getActiveAuctions(uint256,uint256) view returns (uint256[] memory)",
   "function getManyAuctionDetails(uint256[]) view returns ((address,uint256,address,uint256,uint256,address,uint256,bool,bool)[] memory)",
   "function getUserAuctions(address) view returns (uint256[] memory)",
   "function getUserBids(address) view returns (uint256[] memory)",
+  
+  // Write functions
   "function createAuction(address,uint256,uint256,uint256) external",
   "function placeBid(uint256,uint256) external",
   "function endAuction(uint256) external",
   "function cancelAuction(uint256) external",
-  "function relistAuction(uint256,uint256,uint256) external"
+  "function relistAuction(uint256,uint256,uint256) external",
+  
+  // Events
+  "event AuctionCreated(uint256 indexed auctionId, address seller, address nftContract, uint256 tokenId, uint256 reservePrice, uint256 endTime)",
+  "event BidPlaced(uint256 indexed auctionId, address bidder, uint256 amount)",
+  "event BidRefunded(uint256 indexed auctionId, address bidder, uint256 amount)",
+  "event AuctionEnded(uint256 indexed auctionId, address winner, uint256 amount)",
+  "event AuctionCancelled(uint256 indexed auctionId)",
+  "event AuctionExtended(uint256 indexed auctionId, uint256 newEndTime)"
 ];
 
 const ERC20_ABI = [
@@ -1196,7 +1207,7 @@ async function cancelAuction(auctionId) {
 // Función para crear una nueva subasta
 async function createNewAuction(nftContract, tokenId, reservePrice, durationHours) {
   if (!window.ethereum || !currentAccount) {
-    alert("Por favor, conecta tu wallet primero");
+    showError("Por favor, conecta tu wallet primero");
     return;
   }
   
@@ -1204,36 +1215,103 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
-    // Primero aprobamos el contrato NFT
+    showSuccess("Iniciando proceso de creación de subasta...");
+    
+    // 1. Primero verificamos si el contrato tiene aprobación para el NFT
     const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
     
-    // Comprobar si ya está aprobado
+    // Verificar si ya está aprobado
     const isApproved = await nftContractInstance.isApprovedForAll(currentAccount, CONTRACT_ADDRESS);
+    
     if (!isApproved) {
+      showSuccess("Solicitando aprobación para usar el NFT...");
+      
+      // Solicitar aprobación al usuario
       const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true);
-      await approveTx.wait();
-      alert("NFT aprobado correctamente");
+      
+      // Esperamos a que se confirme la transacción
+      showSuccess("Confirmando aprobación de NFT...");
+      const approveReceipt = await approveTx.wait();
+      
+      if (approveReceipt.status === 0) {
+        throw new Error("Falló la transacción de aprobación");
+      }
+      
+      showSuccess("NFT aprobado correctamente");
+    } else {
+      showSuccess("NFT ya está aprobado para el contrato");
     }
     
-    // Crear la subasta
+    // 2. Crear la subasta
     const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+    
+    // Convertir reservePrice a wei
     const reservePriceWei = ethers.utils.parseEther(reservePrice.toString());
+    
+    // Convertir duración de horas a segundos
     const durationSeconds = durationHours * 3600;
     
-    const tx = await contract.createAuction(nftContract, tokenId, reservePriceWei, durationSeconds);
-    await tx.wait();
+    showSuccess("Enviando transacción para crear subasta...");
     
-    alert("¡Subasta creada con éxito!");
+    // Llamada para crear la subasta
+    const tx = await contract.createAuction(
+      nftContract,
+      tokenId,
+      reservePriceWei,
+      durationSeconds
+    );
+    
+    // Esperamos a que se confirme la transacción
+    showSuccess("Confirmando creación de subasta...");
+    const receipt = await tx.wait();
+    
+    if (receipt.status === 0) {
+      throw new Error("Falló la transacción de creación de subasta");
+    }
+    
+    // Buscar el evento AuctionCreated en los logs
+    const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
+    let auctionId = null;
+    
+    if (auctionCreatedEvent && auctionCreatedEvent.args) {
+      auctionId = auctionCreatedEvent.args.auctionId.toString();
+      showSuccess(`¡Subasta #${auctionId} creada con éxito!`);
+    } else {
+      showSuccess("¡Subasta creada con éxito!");
+    }
     
     // Limpiar formulario
     document.getElementById("createAuctionForm").reset();
     
+    // Ocultar detalles de subasta
+    document.getElementById("auction-details").style.display = "none";
+    
+    // Deseleccionar NFT
+    selectedNFT = null;
+    renderNFTGrid(document.getElementById("nftList"));
+    
     // Ir a la pestaña de mis subastas
-    document.getElementById("myauctions-tab").click();
+    setTimeout(() => {
+      document.getElementById("myauctions-tab").click();
+    }, 1500);
     
   } catch (error) {
     console.error("Error al crear la subasta:", error);
-    alert("Error al crear la subasta: " + (error.message || error));
+    
+    // Proporcionar mensaje de error más específico
+    let errorMessage = "Error al crear la subasta.";
+    
+    if (error.code === 4001) {
+      errorMessage = "Transacción rechazada por el usuario.";
+    } else if (error.message.includes("insufficient funds")) {
+      errorMessage = "Fondos insuficientes para completar la transacción.";
+    } else if (error.message.includes("execution reverted")) {
+      // Extraer el mensaje de error de la blockchain si está disponible
+      const revertReason = error.data?.message || error.message;
+      errorMessage = `La transacción falló: ${revertReason}`;
+    }
+    
+    showError(errorMessage);
   }
 }
 

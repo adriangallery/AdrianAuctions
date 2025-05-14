@@ -12,300 +12,494 @@
     :root {
       --bg-color: #f0f0f0;
       --primary-text: #333333;
+      --accent-purple: #8a2be2;
+      --accent-purple-hover: #7a1dd2;
+      --accent-blue: #4dabf7;
       --card-bg: #ffffff;
       --card-border: #e9ecef;
-      --success-bg: #d4edda;
-      --success-text: #155724;
+      --card-selected-border: #8a2be2;
+      --screen-bg: #ffffff;
+      --navbar-height: 60px;
       --error-bg: #f8d7da;
+      --error-border: #f5c6cb;
       --error-text: #721c24;
+      --success-bg: #d4edda;
+      --success-border: #c3e6cb;
+      --success-text: #155724;
     }
+    
     body {
       background-color: var(--bg-color);
       color: var(--primary-text);
+      font-family: 'Share Tech Mono', monospace;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
     }
+    
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 20px;
+      background: var(--screen-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    header {
+      text-align: center;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+    
+    header h1 {
+      font-size: 2.5rem;
+      margin: 0;
+      color: var(--primary-text);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    header p {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: var(--primary-text);
+      opacity: 0.8;
+    }
+    
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
-      border-radius: 0.5rem;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    .badge {
-      font-size: 0.75rem;
+    
+    .section-title {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary-text);
+      font-weight: 600;
+      border-bottom: 2px solid var(--card-border);
+      padding-bottom: 0.5rem;
+    }
+    
+    .auction-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      padding: 0;
+      margin: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .auction-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .auction-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .auction-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.8rem;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    .auction-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .token-info {
+      padding: 0.5rem 0;
+    }
+    
+    .auction-title {
+      font-size: 1.1rem;
+      font-weight: bold;
       margin-bottom: 0.5rem;
+    }
+    
+    .auction-status {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .status-live {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-ending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    
+    .status-reserve-met {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .btn-connect {
+      background-color: var(--accent-purple);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    
+    .btn-connect:hover {
+      background-color: var(--accent-purple-hover);
+    }
+    
+    .btn-action {
+      background-color: var(--accent-purple);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-align: center;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .btn-action:hover {
+      background-color: var(--accent-purple-hover);
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #5a6268;
+    }
+    
+    .account-display {
+      display: inline-block;
+      background-color: #f0f0f0;
+      padding: 0.5rem 1rem;
+      border-radius: 9999px;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    
+    .alert {
+      padding: 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+    
+    .alert-danger {
+      background-color: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+    }
+    
+    .alert-success {
+      background-color: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success-text);
+    }
+    
+    .nav-tabs .nav-link {
+      border: none;
+      color: var(--primary-text);
+      background-color: transparent;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    
+    .nav-tabs .nav-link.active {
+      color: var(--accent-purple);
+      border-bottom: 2px solid var(--accent-purple);
+      background-color: transparent;
+    }
+    
+    .nav-tabs .nav-link:hover {
+      border-color: transparent;
+      border-bottom: 2px solid var(--accent-purple-hover);
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--card-border);
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+    
+    /* NFT Image Styles */
+    .nft-image-container {
+      width: 100%;
+      aspect-ratio: 1/1;
+      overflow: hidden;
+      border-radius: 4px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.8rem;
+    }
+    
+    .nft-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid var(--accent-purple);
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
-  <div class="container py-5">
-    <h1 class="mb-4 text-center">Adrian Auction DApp</h1>
-    <div class="text-center mb-4">
-      <button id="connectBtn" class="btn btn-primary">Conectar Wallet</button>
-      <p id="walletAddress" class="mt-2"></p>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>Adrian Auction DApp</h1>
+      <p>Discover, bid and create NFT auctions on Base Network</p>
+    </header>
+    
+    <!-- Connect Wallet Section -->
+    <div id="connect-section" class="text-center mb-4">
+      <button id="connectBtn" class="btn-connect">Connect Wallet</button>
     </div>
     
-    <ul class="nav nav-tabs mb-4" id="auctionTabs" role="tablist">
-      <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="explore-tab" data-bs-toggle="tab" data-bs-target="#explore" type="button" role="tab">Explorar Subastas</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="myauctions-tab" data-bs-toggle="tab" data-bs-target="#myauctions" type="button" role="tab">Mis Subastas</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="mybids-tab" data-bs-toggle="tab" data-bs-target="#mybids" type="button" role="tab">Mis Ofertas</button>
-      </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Crear Subasta</button>
-      </li>
-    </ul>
+    <!-- Account Info Section (hidden by default) -->
+    <div id="account-section" class="text-center mb-4" style="display: none;">
+      <p>Connected Wallet:</p>
+      <div id="walletAddress" class="account-display"></div>
+    </div>
     
-    <div class="tab-content" id="auctionTabsContent">
-      <!-- Tab: Explorar Subastas -->
-      <div class="tab-pane fade show active" id="explore" role="tabpanel">
-        <div class="text-center mb-3">
-          <select id="filterSelect" class="form-select w-auto d-inline-block">
-            <option value="all">Todas las Subastas</option>
-            <option value="active">Solo Activas</option>
-            <option value="reserveMet">Reserve Cubierta</option>
-            <option value="endingSoon">Finalizando Pronto</option>
-          </select>
-          <button class="btn btn-outline-dark ms-2" onclick="loadActiveAuctions()">Aplicar Filtro</button>
-        </div>
-        <div id="auctionsList" class="row mt-4">
-          <!-- Renderizado dinámicamente por auction.js -->
-        </div>
-      </div>
+    <!-- Alert Messages -->
+    <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
+    <div id="successAlert" class="alert alert-success" style="display: none;"></div>
+
+    <!-- Main Application (hidden until wallet connect) -->
+    <div id="app-content" style="display: none;">
+      <!-- Tabs Navigation -->
+      <ul class="nav nav-tabs mb-4" id="auctionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="explore-tab" data-bs-toggle="tab" data-bs-target="#explore" type="button" role="tab">Explore Auctions</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="myauctions-tab" data-bs-toggle="tab" data-bs-target="#myauctions" type="button" role="tab">My Auctions</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="mybids-tab" data-bs-toggle="tab" data-bs-target="#mybids" type="button" role="tab">My Bids</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Create Auction</button>
+        </li>
+      </ul>
       
-      <!-- Tab: Mis Subastas -->
-      <div class="tab-pane fade" id="myauctions" role="tabpanel">
-        <div class="alert alert-info">
-          Conecta tu wallet para ver tus subastas creadas.
+      <div class="tab-content" id="auctionTabsContent">
+        <!-- Tab: Explore Auctions -->
+        <div class="tab-pane fade show active" id="explore" role="tabpanel">
+          <div class="card">
+            <h2 class="section-title">Active Auctions</h2>
+            
+            <div class="text-center mb-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <select id="filterSelect" class="form-select w-auto">
+                  <option value="all">All Auctions</option>
+                  <option value="active">Only Active</option>
+                  <option value="reserveMet">Reserve Met</option>
+                  <option value="endingSoon">Ending Soon</option>
+                </select>
+                <button class="btn-action" onclick="loadActiveAuctions()">Apply Filter</button>
+              </div>
+            </div>
+            
+            <div id="loading-auctions" class="text-center py-5">
+              <div class="loading-spinner"></div>
+              <p class="mt-2">Loading auctions...</p>
+            </div>
+            
+            <div id="no-auctions-message" class="text-center py-5" style="display: none;">
+              <p>No auctions found with the current filter.</p>
+            </div>
+            
+            <div id="auctionsList" class="auction-grid">
+              <!-- Populated dynamically by auction.js -->
+            </div>
+          </div>
         </div>
-        <div id="myAuctionsList" class="row mt-4">
-          <!-- Renderizado dinámicamente por auction.js -->
+        
+        <!-- Tab: My Auctions -->
+        <div class="tab-pane fade" id="myauctions" role="tabpanel">
+          <div class="card">
+            <h2 class="section-title">My Created Auctions</h2>
+            
+            <div id="loading-my-auctions" class="text-center py-5">
+              <div class="loading-spinner"></div>
+              <p class="mt-2">Loading your auctions...</p>
+            </div>
+            
+            <div id="no-my-auctions" class="text-center py-5" style="display: none;">
+              <p>You haven't created any auctions yet.</p>
+              <button class="btn-action" id="createFirstAuctionBtn">Create Your First Auction</button>
+            </div>
+            
+            <div id="myAuctionsList" class="auction-grid">
+              <!-- Populated dynamically by auction.js -->
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <!-- Tab: Mis Ofertas -->
-      <div class="tab-pane fade" id="mybids" role="tabpanel">
-        <div class="alert alert-info">
-          Conecta tu wallet para ver tus ofertas activas.
+        
+        <!-- Tab: My Bids -->
+        <div class="tab-pane fade" id="mybids" role="tabpanel">
+          <div class="card">
+            <h2 class="section-title">My Active Bids</h2>
+            
+            <div id="loading-my-bids" class="text-center py-5">
+              <div class="loading-spinner"></div>
+              <p class="mt-2">Loading your bids...</p>
+            </div>
+            
+            <div id="no-my-bids" class="text-center py-5" style="display: none;">
+              <p>You haven't placed any bids yet.</p>
+              <button class="btn-action" id="exploreToBidBtn">Explore Auctions to Bid</button>
+            </div>
+            
+            <div id="myBidsList" class="auction-grid">
+              <!-- Populated dynamically by auction.js -->
+            </div>
+          </div>
         </div>
-        <div id="myBidsList" class="row mt-4">
-          <!-- Renderizado dinámicamente por auction.js -->
-        </div>
-      </div>
-      
-      <!-- Tab: Crear Subasta -->
-      <div class="tab-pane fade" id="create" role="tabpanel">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Crear Nueva Subasta</h5>
+        
+        <!-- Tab: Create Auction -->
+        <div class="tab-pane fade" id="create" role="tabpanel">
+          <div class="card">
+            <h2 class="section-title">Create New Auction</h2>
+            
+            <div id="loading-nfts" class="text-center py-5">
+              <div class="loading-spinner"></div>
+              <p class="mt-2">Loading your NFTs...</p>
+            </div>
+            
+            <div id="no-nfts" class="text-center py-5" style="display: none;">
+              <p>No NFTs found in your wallet to auction.</p>
+            </div>
+            
+            <div id="nft-selection" style="display: none;">
+              <h3 class="mb-3">Select an NFT to Auction</h3>
+              <div id="nftList" class="auction-grid mb-4">
+                <!-- Populated with NFTs from wallet -->
+              </div>
+            </div>
+            
             <form id="createAuctionForm">
-              <div class="mb-3">
-                <label for="nftContract" class="form-label">Dirección del Contrato NFT</label>
-                <input type="text" class="form-control" id="nftContract" required>
+              <div id="auction-details" style="display: none;">
+                <h3 class="mb-3">Auction Details</h3>
+                
+                <div class="selected-nft-display mb-3 p-3 border rounded">
+                  <h4>Selected NFT</h4>
+                  <div id="selectedNftDisplay" class="d-flex align-items-center">
+                    <!-- Populated when NFT selected -->
+                  </div>
+                </div>
+                
+                <input type="hidden" id="nftContract">
+                <input type="hidden" id="tokenId">
+                
+                <div class="mb-3">
+                  <label for="reservePrice" class="form-label">Reserve Price (ADRIAN)</label>
+                  <input type="number" class="form-control" id="reservePrice" min="0.000001" step="0.000001" required>
+                  <small class="text-muted">Minimum amount to be considered a valid winning bid</small>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="duration" class="form-label">Duration (hours)</label>
+                  <input type="number" class="form-control" id="duration" min="1" value="24" required>
+                  <small class="text-muted">Auction duration in hours (minimum 1 hour)</small>
+                </div>
+                
+                <button type="submit" class="btn-action w-100">Create Auction</button>
               </div>
-              <div class="mb-3">
-                <label for="tokenId" class="form-label">Token ID</label>
-                <input type="number" class="form-control" id="tokenId" min="1" required>
-              </div>
-              <div class="mb-3">
-                <label for="reservePrice" class="form-label">Precio de Reserva (ADRIAN)</label>
-                <input type="number" class="form-control" id="reservePrice" min="0.000001" step="0.000001" required>
-              </div>
-              <div class="mb-3">
-                <label for="duration" class="form-label">Duración (horas)</label>
-                <input type="number" class="form-control" id="duration" min="1" value="24" required>
-              </div>
-              <button type="submit" class="btn btn-primary">Crear Subasta</button>
             </form>
           </div>
         </div>
       </div>
     </div>
-  </div>
-
-  <!-- Modal para ofertar -->
-  <div class="modal fade" id="bidModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Realizar Oferta</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <form id="bidForm">
-            <input type="hidden" id="bidAuctionId">
-            <div class="mb-3">
-              <label for="bidAmount" class="form-label">Monto (ADRIAN)</label>
-              <input type="number" class="form-control" id="bidAmount" required>
+    
+    <!-- Modal for Bidding -->
+    <div class="modal fade" id="bidModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Place Bid</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div id="bid-nft-display" class="mb-3">
+              <!-- NFT details populated dynamically -->
             </div>
-            <div class="d-flex justify-content-between">
-              <span>Oferta mínima: <span id="minBid">0</span> ADRIAN</span>
-              <span>Precio de reserva: <span id="reservePriceDisplay">0</span> ADRIAN</span>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="button" class="btn btn-primary" id="placeBidBtn">Ofertar</button>
+            
+            <form id="bidForm">
+              <input type="hidden" id="bidAuctionId">
+              <div class="mb-3">
+                <label for="bidAmount" class="form-label">Bid Amount (ADRIAN)</label>
+                <input type="number" class="form-control" id="bidAmount" required>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span>Minimum bid: <span id="minBid">0</span> ADRIAN</span>
+                <span>Reserve price: <span id="reservePriceDisplay">0</span> ADRIAN</span>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn-action" id="placeBidBtn">Place Bid</button>
+          </div>
         </div>
       </div>
     </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <p id="contractInfo"></p>
+      <p>© 2023 Adrian Auction - All rights reserved</p>
+    </div>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-  let currentAccount = null;
-
-  document.getElementById("connectBtn").addEventListener("click", async () => {
-    if (window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        currentAccount = accounts[0];
-        document.getElementById("walletAddress").innerText = `Conectado: ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
-        await loadActiveAuctions();
-        
-        // Cargar datos específicos del usuario
-        if (document.getElementById("myauctions-tab").classList.contains("active")) {
-          loadUserAuctions(currentAccount);
-        }
-        if (document.getElementById("mybids-tab").classList.contains("active")) {
-          loadUserBids(currentAccount);
-        }
-      } catch (err) {
-        console.error("Usuario rechazó la conexión");
-      }
-    } else {
-      alert("MetaMask no detectado!");
-    }
-  });
-
-  // Handlers de pestañas
-  document.getElementById("myauctions-tab").addEventListener("click", () => {
-    if (currentAccount) {
-      loadUserAuctions(currentAccount);
-    }
-  });
-  
-  document.getElementById("mybids-tab").addEventListener("click", () => {
-    if (currentAccount) {
-      loadUserBids(currentAccount);
-    }
-  });
-  
-  // Form handler para crear subasta
-  document.getElementById("createAuctionForm").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!currentAccount) {
-      alert("Por favor, conecta tu wallet primero");
-      return;
-    }
-    
-    const nftContract = document.getElementById("nftContract").value;
-    const tokenId = document.getElementById("tokenId").value;
-    const reservePrice = document.getElementById("reservePrice").value;
-    const duration = document.getElementById("duration").value;
-    
-    createNewAuction(nftContract, tokenId, reservePrice, duration);
-  });
-  
-  // Setup para modal de ofertas
-  document.getElementById("placeBidBtn").addEventListener("click", async () => {
-    const auctionId = document.getElementById("bidAuctionId").value;
-    const bidAmount = document.getElementById("bidAmount").value;
-    
-    placeBid(auctionId, bidAmount);
-    const modal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
-    modal.hide();
-  });
-
-  async function loadActiveAuctions() {
-    const readContract = new ethers.Contract("0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99", [
-      "function getActiveAuctionsCount() view returns (uint256)",
-      "function getActiveAuctions(uint256,uint256) view returns (uint256[] memory)",
-      "function getManyAuctionDetails(uint256[]) view returns ((address,uint256,address,uint256,uint256,address,uint256,bool,bool)[] memory)"
-    ], new ethers.providers.JsonRpcProvider("https://base-mainnet.infura.io/v3/cc0c8013b1e044dcba79d4f7ec3b2ba1"));
-
-    const count = await readContract.getActiveAuctionsCount();
-    const pages = Math.ceil(count / 50);
-    let allIds = [];
-
-    for (let i = 0; i < pages; i++) {
-      const ids = await readContract.getActiveAuctions(i, 50);
-      allIds = allIds.concat(ids);
-    }
-
-    const details = await readContract.getManyAuctionDetails(allIds);
-    const filter = document.getElementById("filterSelect").value;
-
-    const now = Math.floor(Date.now() / 1000);
-    const filtered = details.filter((a) => {
-      const timeLeft = a.endTime - now;
-      if (filter === "active") return a.active;
-      if (filter === "reserveMet") return a.highestBid >= a.reservePrice;
-      if (filter === "endingSoon") return a.active && timeLeft < 900;
-      return true;
-    });
-
-    filtered.sort((a, b) => a.endTime - b.endTime);
-
-    const container = document.getElementById("auctionsList");
-    container.innerHTML = "";
-
-    filtered.forEach((a, index) => {
-      const timeRemaining = a.endTime - now;
-      const endsSoon = a.active && timeRemaining < 900;
-      const passedReserve = a.highestBid >= a.reservePrice;
-
-      const cardClass = `card text-dark ${endsSoon ? 'border-warning bg-warning-subtle' : ''} ${passedReserve ? 'border-success bg-success-subtle' : ''}`.trim();
-      const statusTag = `
-        ${endsSoon ? '<span class="badge bg-warning text-dark me-1">🔥 Finalizando Pronto</span>' : ''}
-        ${passedReserve ? '<span class="badge bg-success text-white">✅ Reserva Cubierta</span>' : ''}
-      `;
-
-      const html = `
-        <div class="col-md-4 mb-3">
-          <div class="${cardClass}">
-            <div class="card-body">
-              <h5 class="card-title">Subasta #${index + 1}</h5>
-              <p>${statusTag}</p>
-              <p>NFT: ${formatAddress(a.nftContract)}</p>
-              <p>Token ID: ${a.tokenId}</p>
-              <p>Vendedor: ${formatAddress(a.seller)}</p>
-              <p>Reserva: ${formatEther(a.reservePrice)} ADRIAN</p>
-              <p>Oferta Más Alta: ${formatEther(a.highestBid)} ADRIAN</p>
-              <p>Tiempo Restante: ${formatTimeRemaining(a.endTime)}</p>
-              <p>Estado: ${a.active ? "Activa" : "Inactiva"} ${a.finalized ? "(Finalizada)" : ""}</p>
-              
-              <div class="d-flex justify-content-between mt-3">
-                ${a.active && !a.finalized ? `
-                  <button class="btn btn-primary btn-sm" onclick="openBidModal(${index}, ${a.highestBid}, ${a.reservePrice})">Ofertar</button>
-                  ${currentAccount && currentAccount.toLowerCase() === a.seller.toLowerCase() && a.endTime < now ? 
-                    `<button class="btn btn-success btn-sm" onclick="finalizeAuction(${index})">Finalizar</button>` : ''}
-                ` : ''}
-              </div>
-            </div>
-          </div>
-        </div>`;
-      container.innerHTML += html;
-    });
-  }
-
-  function openBidModal(auctionId, currentBid, reservePrice) {
-    document.getElementById("bidAuctionId").value = auctionId;
-    
-    const minBidAmount = currentBid > 0 ? 
-      parseFloat(ethers.utils.formatUnits(currentBid, 18)) + 0.000001 : 
-      parseFloat(ethers.utils.formatUnits(reservePrice, 18));
-    
-    document.getElementById("minBid").textContent = minBidAmount.toFixed(6);
-    document.getElementById("reservePriceDisplay").textContent = ethers.utils.formatUnits(reservePrice, 18);
-    document.getElementById("bidAmount").min = minBidAmount;
-    document.getElementById("bidAmount").value = minBidAmount;
-    
-    const modal = new bootstrap.Modal(document.getElementById('bidModal'));
-    modal.show();
-  }
-</script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@alch/alchemy-web3@1.4.7/dist/alchemyWeb3.min.js"></script>
 </body>
 </html>

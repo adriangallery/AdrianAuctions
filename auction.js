@@ -1,53 +1,13 @@
-// Archivo auction.js - Funcionalidad principal para la DApp de subastas
+// Adrian Auction DApp - Main JavaScript functionality
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // Comprobar si MetaMask está instalado al cargar la página
-  if (window.ethereum) {
-    // Escuchar cambios de cuenta
-    window.ethereum.on('accountsChanged', (accounts) => {
-      if (accounts.length > 0) {
-        currentAccount = accounts[0];
-        document.getElementById("walletAddress").innerText = `Conectado: ${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
-        loadActiveAuctions();
-        
-        // Actualizar otras vistas si están activas
-        const activeTab = document.querySelector('.nav-link.active');
-        if (activeTab) {
-          if (activeTab.id === 'myauctions-tab') {
-            loadUserAuctions(currentAccount);
-          } else if (activeTab.id === 'mybids-tab') {
-            loadUserBids(currentAccount);
-          }
-        }
-      } else {
-        currentAccount = null;
-        document.getElementById("walletAddress").innerText = "";
-      }
-    });
-
-    // Escuchar cambios de red
-    window.ethereum.on('chainChanged', () => {
-      window.location.reload();
-    });
-    
-    // Comprobación de red
-    try {
-      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
-      if (chainId !== '0x2105') { // Base Mainnet
-        showNetworkWarning();
-      }
-    } catch (error) {
-      console.error("Error verificando red:", error);
-    }
-  }
-});
-
-// Constantes del contrato
+// Contract Constants
 const CONTRACT_ADDRESS = "0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99";
-const RPC_URL = "https://base-mainnet.infura.io/v3/cc0c8013b1e044dcba79d4f7ec3b2ba1";
-const ADRIAN_TOKEN_ADDRESS = "0x6c9c44334093eB53C7acEAE32DCEC8E945D27b28"; // Dirección hipotética del token ADRIAN
+const ADRIAN_TOKEN_ADDRESS = "0x6c9c44334093eB53C7acEAE32DCEC8E945D27b28"; // Hypothetical ADRIAN token address
+const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
+const ALCHEMY_RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+const RPC_URL = ALCHEMY_RPC_URL;
 
-// Interfaces del contrato
+// Contract ABIs
 const AUCTION_ABI = [
   "function getActiveAuctionsCount() view returns (uint256)",
   "function getActiveAuctions(uint256,uint256) view returns (uint256[] memory)",
@@ -68,10 +28,224 @@ const ERC20_ABI = [
 
 const ERC721_ABI = [
   "function isApprovedForAll(address owner, address operator) external view returns (bool)",
-  "function setApprovalForAll(address operator, bool approved) external"
+  "function setApprovalForAll(address operator, bool approved) external",
+  "function ownerOf(uint256 tokenId) external view returns (address)",
+  "function balanceOf(address owner) external view returns (uint256)",
+  "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)",
+  "function tokenURI(uint256 tokenId) external view returns (string memory)"
 ];
 
-// Funciones auxiliares para mostrar información de subastas
+// Base Network Configuration
+const BASE_NETWORK = {
+  chainId: "0x2105", // 8453 in hex
+  chainName: "Base Mainnet",
+  nativeCurrency: {
+    name: "ETH",
+    symbol: "ETH",
+    decimals: 18,
+  },
+  rpcUrls: [RPC_URL],
+  blockExplorerUrls: ["https://basescan.org/"],
+};
+
+// App State
+let currentAccount = null;
+let provider = null;
+let signer = null;
+let auctionContract = null;
+let readOnlyProvider = null;
+let readOnlyAuctionContract = null;
+let alchemyWeb3 = null;
+let ownedNFTs = [];
+let selectedNFT = null;
+
+// DOM Elements
+document.addEventListener('DOMContentLoaded', () => {
+  // Set up contract info
+  document.getElementById('contractInfo').textContent = 
+    `Contract: ${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(38)}`;
+  
+  // Connect button event listener
+  document.getElementById("connectBtn").addEventListener("click", connectWallet);
+  
+  // Tab change handlers
+  document.getElementById("myauctions-tab").addEventListener("click", () => {
+    if (currentAccount) {
+      loadUserAuctions(currentAccount);
+    }
+  });
+  
+  document.getElementById("mybids-tab").addEventListener("click", () => {
+    if (currentAccount) {
+      loadUserBids(currentAccount);
+    }
+  });
+  
+  document.getElementById("create-tab").addEventListener("click", () => {
+    if (currentAccount) {
+      loadUserNFTs(currentAccount);
+    }
+  });
+  
+  // Form handlers
+  document.getElementById("createAuctionForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!currentAccount) {
+      showError("Please connect your wallet first");
+      return;
+    }
+    
+    if (!selectedNFT) {
+      showError("Please select an NFT first");
+      return;
+    }
+    
+    const reservePrice = document.getElementById("reservePrice").value;
+    const duration = document.getElementById("duration").value;
+    
+    createNewAuction(selectedNFT.contract, selectedNFT.tokenId, reservePrice, duration);
+  });
+  
+  // Bid modal setup
+  document.getElementById("placeBidBtn").addEventListener("click", () => {
+    const auctionId = document.getElementById("bidAuctionId").value;
+    const bidAmount = document.getElementById("bidAmount").value;
+    
+    placeBid(auctionId, bidAmount);
+    const bidModal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
+    bidModal.hide();
+  });
+  
+  // Navigation buttons
+  document.getElementById("createFirstAuctionBtn")?.addEventListener("click", () => {
+    document.getElementById("create-tab").click();
+  });
+  
+  document.getElementById("exploreToBidBtn")?.addEventListener("click", () => {
+    document.getElementById("explore-tab").click();
+  });
+  
+  // Check if wallet is already connected
+  checkConnection();
+});
+
+// Initialize Alchemy Web3
+function initAlchemyWeb3() {
+  if (window.AlchemyWeb3) {
+    alchemyWeb3 = AlchemyWeb3.createAlchemyWeb3(ALCHEMY_RPC_URL);
+    return true;
+  }
+  return false;
+}
+
+// Check if wallet is connected
+async function checkConnection() {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+      if (accounts.length > 0) {
+        // Auto-connect if user has previously connected
+        await connectWallet();
+      }
+    } catch (error) {
+      console.error("Failed to check connection:", error);
+    }
+  }
+}
+
+// Connect wallet
+async function connectWallet() {
+  try {
+    if (!window.ethereum) {
+      showError("MetaMask not detected! Please install MetaMask to use this application.");
+      return;
+    }
+    
+    // Request account access
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    currentAccount = accounts[0];
+    
+    // Check if user is on the Base network
+    const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+    if (chainId !== BASE_NETWORK.chainId) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: BASE_NETWORK.chainId }],
+        });
+      } catch (switchError) {
+        // This error code indicates that the chain has not been added to MetaMask
+        if (switchError.code === 4902) {
+          await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [BASE_NETWORK],
+          });
+        } else {
+          throw switchError;
+        }
+      }
+    }
+    
+    // Initialize providers and contracts
+    provider = new ethers.providers.Web3Provider(window.ethereum);
+    signer = provider.getSigner();
+    readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    
+    // Create contract instances
+    readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+    auctionContract = readOnlyAuctionContract.connect(signer);
+    
+    // Initialize Alchemy Web3
+    initAlchemyWeb3();
+    
+    // Update UI
+    document.getElementById("connect-section").style.display = "none";
+    document.getElementById("account-section").style.display = "block";
+    document.getElementById("app-content").style.display = "block";
+    document.getElementById("walletAddress").textContent = `${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
+    
+    // Event listeners for account/chain changes
+    window.ethereum.on('accountsChanged', (accounts) => {
+      window.location.reload();
+    });
+    
+    window.ethereum.on('chainChanged', () => {
+      window.location.reload();
+    });
+    
+    // Load data
+    showSuccess("Wallet connected successfully!");
+    await loadActiveAuctions();
+    
+  } catch (error) {
+    console.error("Connection error:", error);
+    showError(error.message || "Failed to connect wallet");
+  }
+}
+
+// Show error message
+function showError(message) {
+  const errorAlert = document.getElementById("errorAlert");
+  errorAlert.textContent = message;
+  errorAlert.style.display = "block";
+  
+  setTimeout(() => {
+    errorAlert.style.display = "none";
+  }, 5000);
+}
+
+// Show success message
+function showSuccess(message) {
+  const successAlert = document.getElementById("successAlert");
+  successAlert.textContent = message;
+  successAlert.style.display = "block";
+  
+  setTimeout(() => {
+    successAlert.style.display = "none";
+  }, 5000);
+}
+
+// Helper functions for displaying auction data
 function formatEther(wei) {
   return ethers.utils.formatUnits(wei, 18);
 }
@@ -85,7 +259,7 @@ function formatTimeRemaining(endTime) {
   const now = Math.floor(Date.now() / 1000);
   const secondsRemaining = endTime - now;
   
-  if (secondsRemaining <= 0) return "Finalizada";
+  if (secondsRemaining <= 0) return "Ended";
   
   const days = Math.floor(secondsRemaining / 86400);
   const hours = Math.floor((secondsRemaining % 86400) / 3600);
@@ -98,200 +272,365 @@ function formatTimeRemaining(endTime) {
   return `${seconds}s`;
 }
 
-function showNetworkWarning() {
-  // Crear una alerta en la parte superior
-  const alertDiv = document.createElement('div');
-  alertDiv.className = 'alert alert-warning alert-dismissible fade show';
-  alertDiv.setAttribute('role', 'alert');
-  alertDiv.innerHTML = `
-    <strong>¡Red incorrecta!</strong> Por favor, cambia a la red Base Mainnet para interactuar con AdrianAuctions.
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+// Load active auctions for explore tab
+async function loadActiveAuctions() {
+  const loadingElement = document.getElementById("loading-auctions");
+  const noAuctionsMessage = document.getElementById("no-auctions-message");
+  const auctionsList = document.getElementById("auctionsList");
+  
+  loadingElement.style.display = "block";
+  noAuctionsMessage.style.display = "none";
+  auctionsList.innerHTML = "";
+  
+  try {
+    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
+    const pages = Math.ceil(count.toNumber() / 50);
+    let allIds = [];
+    
+    for (let i = 0; i < pages; i++) {
+      const ids = await readOnlyAuctionContract.getActiveAuctions(i, 50);
+      allIds = allIds.concat(ids.map(id => id.toNumber()));
+    }
+    
+    if (allIds.length === 0) {
+      loadingElement.style.display = "none";
+      noAuctionsMessage.style.display = "block";
+      return;
+    }
+    
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(allIds);
+    const filter = document.getElementById("filterSelect").value;
+    
+    const now = Math.floor(Date.now() / 1000);
+    const filtered = details.filter((auction, index) => {
+      const timeLeft = auction.endTime - now;
+      if (filter === "active") return auction.active;
+      if (filter === "reserveMet") return auction.highestBid >= auction.reservePrice;
+      if (filter === "endingSoon") return auction.active && timeLeft < 900;
+      return true;
+    });
+    
+    // Sort auctions - ending soon first
+    filtered.sort((a, b) => a.endTime - b.endTime);
+    
+    if (filtered.length === 0) {
+      loadingElement.style.display = "none";
+      noAuctionsMessage.style.display = "block";
+      return;
+    }
+    
+    for (let i = 0; i < filtered.length; i++) {
+      const auction = filtered[i];
+      const auctionId = allIds[i];
+      
+      await renderAuction(auction, auctionId, auctionsList);
+    }
+    
+    loadingElement.style.display = "none";
+    
+  } catch (error) {
+    console.error("Error loading auctions:", error);
+    showError("Failed to load auctions. Please try again later.");
+    loadingElement.style.display = "none";
+    noAuctionsMessage.style.display = "block";
+  }
+}
+
+// Load user created auctions
+async function loadUserAuctions(userAddress) {
+  const loadingElement = document.getElementById("loading-my-auctions");
+  const noAuctionsMessage = document.getElementById("no-my-auctions");
+  const auctionsList = document.getElementById("myAuctionsList");
+  
+  loadingElement.style.display = "block";
+  noAuctionsMessage.style.display = "none";
+  auctionsList.innerHTML = "";
+  
+  try {
+    const auctionIds = await readOnlyAuctionContract.getUserAuctions(userAddress);
+    
+    if (auctionIds.length === 0) {
+      loadingElement.style.display = "none";
+      noAuctionsMessage.style.display = "block";
+      return;
+    }
+    
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    
+    for (let i = 0; i < details.length; i++) {
+      const auction = details[i];
+      const auctionId = auctionIds[i].toNumber();
+      
+      await renderAuction(auction, auctionId, auctionsList, true);
+    }
+    
+    loadingElement.style.display = "none";
+    
+  } catch (error) {
+    console.error("Error loading user auctions:", error);
+    showError("Failed to load your auctions. Please try again later.");
+    loadingElement.style.display = "none";
+    noAuctionsMessage.style.display = "block";
+  }
+}
+
+// Load user bids
+async function loadUserBids(userAddress) {
+  const loadingElement = document.getElementById("loading-my-bids");
+  const noBidsMessage = document.getElementById("no-my-bids");
+  const bidsList = document.getElementById("myBidsList");
+  
+  loadingElement.style.display = "block";
+  noBidsMessage.style.display = "none";
+  bidsList.innerHTML = "";
+  
+  try {
+    const auctionIds = await readOnlyAuctionContract.getUserBids(userAddress);
+    
+    if (auctionIds.length === 0) {
+      loadingElement.style.display = "none";
+      noBidsMessage.style.display = "block";
+      return;
+    }
+    
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    
+    for (let i = 0; i < details.length; i++) {
+      const auction = details[i];
+      const auctionId = auctionIds[i].toNumber();
+      
+      // Check if user is highest bidder and highlight
+      const isHighestBidder = auction.highestBidder.toLowerCase() === userAddress.toLowerCase();
+      
+      await renderAuction(auction, auctionId, bidsList, false, isHighestBidder);
+    }
+    
+    loadingElement.style.display = "none";
+    
+  } catch (error) {
+    console.error("Error loading user bids:", error);
+    showError("Failed to load your bids. Please try again later.");
+    loadingElement.style.display = "none";
+    noBidsMessage.style.display = "block";
+  }
+}
+
+// Render a single auction card
+async function renderAuction(auction, auctionId, container, isOwner = false, isHighestBidder = false) {
+  const now = Math.floor(Date.now() / 1000);
+  const timeRemaining = auction.endTime - now;
+  const endingSoon = auction.active && timeRemaining < 900;
+  const reserveMet = auction.highestBid >= auction.reservePrice;
+  
+  // Create auction card
+  const auctionCard = document.createElement('div');
+  auctionCard.className = 'auction-card';
+  
+  let cardClass = '';
+  if (isHighestBidder) cardClass += ' border-success';
+  else if (endingSoon) cardClass += ' border-warning';
+  else if (reserveMet) cardClass += ' border-primary';
+  
+  auctionCard.className = `auction-card ${cardClass}`;
+  
+  // Try to fetch NFT image from Alchemy if possible
+  let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
+  
+  if (alchemyWeb3) {
+    try {
+      // Create a temporary NFT contract to get the tokenURI
+      const nftContract = new ethers.Contract(auction.nftContract, ERC721_ABI, readOnlyProvider);
+      const tokenURI = await nftContract.tokenURI(auction.tokenId);
+      
+      if (tokenURI) {
+        // Try to fetch metadata
+        if (tokenURI.startsWith('ipfs://')) {
+          const ipfsHash = tokenURI.replace('ipfs://', '');
+          const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+          
+          try {
+            const response = await fetch(ipfsUrl);
+            const metadata = await response.json();
+            
+            if (metadata.image) {
+              if (metadata.image.startsWith('ipfs://')) {
+                const imageHash = metadata.image.replace('ipfs://', '');
+                imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+              } else {
+                imageUrl = metadata.image;
+              }
+            }
+          } catch (error) {
+            console.warn("Failed to fetch NFT metadata:", error);
+          }
+        } else if (tokenURI.startsWith('http')) {
+          try {
+            const response = await fetch(tokenURI);
+            const metadata = await response.json();
+            
+            if (metadata.image) {
+              imageUrl = metadata.image;
+            }
+          } catch (error) {
+            console.warn("Failed to fetch NFT metadata:", error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to load NFT image:", error);
+    }
+  }
+  
+  // Create status badges
+  let statusBadges = '';
+  
+  if (endingSoon) {
+    statusBadges += '<span class="auction-status status-ending">🔥 Ending Soon</span>';
+  }
+  
+  if (reserveMet) {
+    statusBadges += '<span class="auction-status status-reserve-met">✅ Reserve Met</span>';
+  }
+  
+  if (isHighestBidder) {
+    statusBadges += '<span class="auction-status status-live">🏆 You\'re Winning</span>';
+  }
+  
+  if (!auction.active) {
+    statusBadges += '<span class="auction-status">Inactive</span>';
+  }
+  
+  if (auction.finalized) {
+    statusBadges += '<span class="auction-status">Finalized</span>';
+  }
+  
+  // Create action buttons
+  let actionButtons = '';
+  
+  if (auction.active && !auction.finalized) {
+    if (isOwner && auction.endTime <= now) {
+      actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
+    } else if (isOwner && auction.highestBid.isZero()) {
+      actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
+    } else if (!isOwner) {
+      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${auction.highestBid}', '${auction.reservePrice}', '${auction.nftContract}', ${auction.tokenId})">Place Bid</button>`;
+    }
+  } else if (isOwner && !auction.active && auction.finalized && auction.highestBidder === ethers.constants.AddressZero) {
+    actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Relist Auction</button>`;
+  }
+  
+  // Populate auction card
+  auctionCard.innerHTML = `
+    <div class="nft-image-container">
+      <img src="${imageUrl}" class="nft-image" alt="NFT #${auction.tokenId}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+    </div>
+    <div class="auction-info">
+      <h3 class="auction-title">NFT #${auction.tokenId}</h3>
+      <div class="mb-2">${statusBadges}</div>
+      <p><strong>Contract:</strong> ${formatAddress(auction.nftContract)}</p>
+      <p><strong>Seller:</strong> ${formatAddress(auction.seller)}</p>
+      <p><strong>Reserve:</strong> ${formatEther(auction.reservePrice)} ADRIAN</p>
+      <p><strong>Highest Bid:</strong> ${formatEther(auction.highestBid)} ADRIAN</p>
+      <p><strong>Time Remaining:</strong> ${formatTimeRemaining(auction.endTime)}</p>
+      <div class="mt-3">
+        ${actionButtons}
+      </div>
+    </div>
   `;
   
-  document.querySelector('.container').prepend(alertDiv);
+  container.appendChild(auctionCard);
 }
 
-// Cargar subastas creadas por el usuario
-async function loadUserAuctions(userAddress) {
-  if (!userAddress) return;
+// Open bid modal
+function openBidModal(auctionId, currentBid, reservePrice, nftContract, tokenId) {
+  document.getElementById("bidAuctionId").value = auctionId;
+  
+  // Calculate minimum bid
+  const currentBidValue = ethers.BigNumber.from(currentBid);
+  const reservePriceValue = ethers.BigNumber.from(reservePrice);
+  
+  let minBidAmount;
+  if (currentBidValue.gt(0)) {
+    // If there's already a bid, minimum is current bid + 0.000001
+    minBidAmount = parseFloat(ethers.utils.formatUnits(currentBidValue, 18)) + 0.000001;
+  } else {
+    // If no bids yet, minimum is reserve price
+    minBidAmount = parseFloat(ethers.utils.formatUnits(reservePriceValue, 18));
+  }
+  
+  document.getElementById("minBid").textContent = minBidAmount.toFixed(6);
+  document.getElementById("reservePriceDisplay").textContent = ethers.utils.formatUnits(reservePriceValue, 18);
+  document.getElementById("bidAmount").min = minBidAmount;
+  document.getElementById("bidAmount").value = minBidAmount;
+  
+  // Try to load NFT image for the modal
+  loadNFTForBidModal(nftContract, tokenId);
+  
+  // Open modal
+  const modal = new bootstrap.Modal(document.getElementById('bidModal'));
+  modal.show();
+}
+
+// Load NFT image for bid modal
+async function loadNFTForBidModal(nftContract, tokenId) {
+  const bidNftDisplay = document.getElementById("bid-nft-display");
+  bidNftDisplay.innerHTML = `<div class="text-center"><div class="loading-spinner"></div><p>Loading NFT details...</p></div>`;
+  
+  let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
+  let nftName = `NFT #${tokenId}`;
   
   try {
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, provider);
-    
-    // Obtener IDs de subastas del usuario
-    const auctionIds = await contract.getUserAuctions(userAddress);
-    
-    if (auctionIds.length === 0) {
-      document.getElementById("myAuctionsList").innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-info">
-            No has creado ninguna subasta todavía.
-          </div>
-        </div>
-      `;
-      return;
-    }
-    
-    // Obtener detalles de todas las subastas
-    const details = await contract.getManyAuctionDetails(auctionIds);
-    
-    // Renderizar subastas
-    const container = document.getElementById("myAuctionsList");
-    container.innerHTML = "";
-    
-    const now = Math.floor(Date.now() / 1000);
-    
-    details.forEach((auction, index) => {
-      const auctionId = auctionIds[index];
-      const timeRemaining = auction.endTime - now;
-      const endsSoon = auction.active && timeRemaining < 900;
-      const passedReserve = auction.highestBid >= auction.reservePrice;
+    if (alchemyWeb3) {
+      // Try to get metadata using Alchemy
+      const nftContract = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
+      const tokenURI = await nftContract.tokenURI(tokenId);
       
-      const cardClass = `card text-dark ${endsSoon ? 'border-warning bg-warning-subtle' : ''} ${passedReserve ? 'border-success bg-success-subtle' : ''}`.trim();
-      const statusTag = `
-        ${endsSoon ? '<span class="badge bg-warning text-dark me-1">🔥 Finalizando Pronto</span>' : ''}
-        ${passedReserve ? '<span class="badge bg-success text-white">✅ Reserva Cubierta</span>' : ''}
-        ${!auction.active ? '<span class="badge bg-secondary">Inactiva</span>' : ''}
-        ${auction.finalized ? '<span class="badge bg-info text-white">Finalizada</span>' : ''}
-      `;
-      
-      let actionButtons = '';
-      
-      if (auction.active && !auction.finalized) {
-        if (auction.endTime <= now) {
-          actionButtons = `<button class="btn btn-success btn-sm" onclick="finalizeAuction(${auctionId})">Finalizar Subasta</button>`;
-        } else if (auction.highestBid === 0) {
-          actionButtons = `<button class="btn btn-danger btn-sm" onclick="cancelAuction(${auctionId})">Cancelar Subasta</button>`;
+      if (tokenURI) {
+        let metadata;
+        
+        // Handle IPFS URIs
+        if (tokenURI.startsWith('ipfs://')) {
+          const ipfsHash = tokenURI.replace('ipfs://', '');
+          const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+          
+          const response = await fetch(ipfsUrl);
+          metadata = await response.json();
+        } else if (tokenURI.startsWith('http')) {
+          const response = await fetch(tokenURI);
+          metadata = await response.json();
         }
-      } else if (!auction.active && auction.finalized && auction.highestBidder === ethers.constants.AddressZero) {
-        actionButtons = `<button class="btn btn-primary btn-sm" onclick="showRelistModal(${auctionId})">Volver a Subastar</button>`;
+        
+        if (metadata) {
+          if (metadata.image) {
+            if (metadata.image.startsWith('ipfs://')) {
+              const imageHash = metadata.image.replace('ipfs://', '');
+              imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+            } else {
+              imageUrl = metadata.image;
+            }
+          }
+          
+          if (metadata.name) {
+            nftName = metadata.name;
+          }
+        }
       }
-      
-      const html = `
-        <div class="col-md-4 mb-3">
-          <div class="${cardClass}">
-            <div class="card-body">
-              <h5 class="card-title">Subasta #${auctionId.toString()}</h5>
-              <p>${statusTag}</p>
-              <p>NFT: ${formatAddress(auction.nftContract)}</p>
-              <p>Token ID: ${auction.tokenId}</p>
-              <p>Reserva: ${formatEther(auction.reservePrice)} ADRIAN</p>
-              <p>Oferta Más Alta: ${formatEther(auction.highestBid)} ADRIAN</p>
-              <p>Mejor Postor: ${auction.highestBidder !== ethers.constants.AddressZero ? formatAddress(auction.highestBidder) : 'Ninguno'}</p>
-              <p>Tiempo: ${auction.active ? formatTimeRemaining(auction.endTime) : 'Finalizada'}</p>
-              
-              <div class="mt-3">
-                ${actionButtons}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      container.innerHTML += html;
-    });
-    
-  } catch (error) {
-    console.error("Error cargando subastas del usuario:", error);
-    document.getElementById("myAuctionsList").innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger">
-          Error al cargar tus subastas. Por favor, intenta de nuevo.
-        </div>
-      </div>
-    `;
-  }
-}
-
-// Cargar ofertas realizadas por el usuario
-async function loadUserBids(userAddress) {
-  if (!userAddress) return;
-  
-  try {
-    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, provider);
-    
-    // Obtener IDs de subastas donde el usuario ha ofertado
-    const auctionIds = await contract.getUserBids(userAddress);
-    
-    if (auctionIds.length === 0) {
-      document.getElementById("myBidsList").innerHTML = `
-        <div class="col-12">
-          <div class="alert alert-info">
-            No has realizado ninguna oferta todavía.
-          </div>
-        </div>
-      `;
-      return;
     }
-    
-    // Obtener detalles de todas las subastas
-    const details = await contract.getManyAuctionDetails(auctionIds);
-    
-    // Renderizar subastas
-    const container = document.getElementById("myBidsList");
-    container.innerHTML = "";
-    
-    const now = Math.floor(Date.now() / 1000);
-    
-    details.forEach((auction, index) => {
-      const auctionId = auctionIds[index];
-      const timeRemaining = auction.endTime - now;
-      const isHighestBidder = auction.highestBidder.toLowerCase() === userAddress.toLowerCase();
-      const endsSoon = auction.active && timeRemaining < 900;
-      
-      let cardClass = "card";
-      if (isHighestBidder) {
-        cardClass += " border-success bg-success-subtle";
-      } else if (endsSoon) {
-        cardClass += " border-warning bg-warning-subtle";
-      }
-      
-      const statusTag = `
-        ${isHighestBidder ? '<span class="badge bg-success text-white me-1">🏆 Mejor Postor</span>' : ''}
-        ${endsSoon ? '<span class="badge bg-warning text-dark me-1">🔥 Finalizando Pronto</span>' : ''}
-        ${!auction.active ? '<span class="badge bg-secondary">Inactiva</span>' : ''}
-        ${auction.finalized ? '<span class="badge bg-info text-white">Finalizada</span>' : ''}
-      `;
-      
-      const html = `
-        <div class="col-md-4 mb-3">
-          <div class="${cardClass}">
-            <div class="card-body">
-              <h5 class="card-title">Subasta #${auctionId.toString()}</h5>
-              <p>${statusTag}</p>
-              <p>NFT: ${formatAddress(auction.nftContract)}</p>
-              <p>Token ID: ${auction.tokenId}</p>
-              <p>Vendedor: ${formatAddress(auction.seller)}</p>
-              <p>Reserva: ${formatEther(auction.reservePrice)} ADRIAN</p>
-              <p>Tu Posición: ${isHighestBidder ? '🏆 Ganando' : '❌ Superado'}</p>
-              <p>Oferta Más Alta: ${formatEther(auction.highestBid)} ADRIAN</p>
-              <p>Tiempo: ${auction.active ? formatTimeRemaining(auction.endTime) : 'Finalizada'}</p>
-              
-              <div class="mt-3">
-                ${auction.active && !isHighestBidder ? 
-                  `<button class="btn btn-primary btn-sm" onclick="openBidModal(${auctionId}, ${auction.highestBid}, ${auction.reservePrice})">Ofertar de nuevo</button>` : 
-                  ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      container.innerHTML += html;
-    });
-    
   } catch (error) {
-    console.error("Error cargando ofertas del usuario:", error);
-    document.getElementById("myBidsList").innerHTML = `
-      <div class="col-12">
-        <div class="alert alert-danger">
-          Error al cargar tus ofertas. Por favor, intenta de nuevo.
-        </div>
-      </div>
-    `;
+    console.warn("Error loading NFT details:", error);
   }
+  
+  // Update modal with NFT details
+  bidNftDisplay.innerHTML = `
+    <div class="d-flex align-items-center">
+      <img src="${imageUrl}" alt="${nftName}" class="me-3" style="width: 100px; height: 100px; object-fit: contain;" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+      <div>
+        <h4>${nftName}</h4>
+        <p>Token ID: ${tokenId}</p>
+        <p>Contract: ${formatAddress(nftContract)}</p>
+      </div>
+    </div>
+  `;
 }
 
 // Se llamará cuando el usuario realice la acción de ofertar

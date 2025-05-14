@@ -281,22 +281,58 @@ async function loadUserNFTs(userAddress) {
     // Process NFTs
     if (nftsData.ownedNfts && nftsData.ownedNfts.length > 0) {
       ownedNFTs = nftsData.ownedNfts.map(nft => {
-        // Verificar que existan todas las propiedades necesarias
-        if (!nft || !nft.contract || !nft.id || !nft.id.tokenId) {
-          console.error("NFT data format error:", nft);
-          return null;
-        }
-        
         try {
-          const tokenIdHex = nft.id.tokenId;
-          const tokenIdInt = parseInt(tokenIdHex, 16);
+          // Verificar que existan las propiedades necesarias
+          if (!nft || !nft.contract) {
+            console.error("NFT missing required properties:", nft);
+            return null;
+          }
+          
+          // Extraer tokenId - podría estar directamente en nft.tokenId o en nft.id.tokenId
+          let tokenId;
+          if (nft.tokenId) {
+            // Si tokenId está directamente en el objeto
+            tokenId = nft.tokenId;
+          } else if (nft.id && nft.id.tokenId) {
+            // Si tokenId está en nft.id.tokenId (formato anterior)
+            tokenId = nft.id.tokenId;
+          } else {
+            console.error("No tokenId found in NFT:", nft);
+            return null;
+          }
+          
+          // Convertir tokenId a entero (podría ser string en formato decimal o hex)
+          let tokenIdInt;
+          if (typeof tokenId === 'number') {
+            tokenIdInt = tokenId;
+          } else if (tokenId.startsWith('0x')) {
+            tokenIdInt = parseInt(tokenId, 16);
+          } else {
+            tokenIdInt = parseInt(tokenId, 10);
+          }
+          
+          if (isNaN(tokenIdInt)) {
+            console.error("Invalid tokenId format:", tokenId);
+            return null;
+          }
+          
+          // Extraer título/nombre - podría estar en nft.title o nft.name
+          const title = nft.title || nft.name || `NFT #${tokenIdInt}`;
+          
+          // Extraer image/media
+          let media = "";
+          if (nft.media && nft.media.length > 0 && nft.media[0].gateway) {
+            media = nft.media[0].gateway;
+          } else if (nft.image) {
+            media = nft.image;
+          }
           
           return {
             contract: nft.contract.address,
             tokenId: tokenIdInt,
-            title: nft.title || `NFT #${tokenIdInt}`,
+            title: title,
             description: nft.description || "",
-            media: nft.media && nft.media.length > 0 ? nft.media[0].gateway : "",
+            media: media,
             metadata: nft.metadata
           };
         } catch (err) {

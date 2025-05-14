@@ -293,6 +293,8 @@ async function loadUserNFTs(userAddress) {
             return null;
           }
           
+          console.log("Procesando NFT completo:", nft);
+          
           // Extraer tokenId - podría estar directamente en nft.tokenId o en nft.id.tokenId
           let tokenId;
           if (nft.tokenId) {
@@ -335,22 +337,32 @@ async function loadUserNFTs(userAddress) {
             title = `${nft.contract.name} #${tokenIdInt}`;
           }
           
+          console.log(`NFT #${tokenIdInt} Propiedades principales:`, {
+            contract: nft.contract,
+            media: nft.media,
+            raw: nft.raw,
+            metadata: nft.metadata
+          });
+          
           // MÉTODO MEJORADO PARA EXTRAER LA URL DE LA IMAGEN
           let mediaUrl = "";
           
           // 1. Buscar en raw data - a veces la respuesta de Alchemy tiene la estructura completa directa
           if (nft.raw && nft.raw.metadata && nft.raw.metadata.image) {
             mediaUrl = nft.raw.metadata.image;
+            console.log("Imagen encontrada en raw.metadata.image:", mediaUrl);
           }
           
           // 2. Intentar extraer la URL de la imagen de varias ubicaciones posibles
           if (!mediaUrl && nft.media && Array.isArray(nft.media) && nft.media.length > 0) {
+            console.log("Buscando en media array:", nft.media);
             // Revisar todas las posibles propiedades donde podría estar la imagen
             const mediaSources = ['gateway', 'raw', 'thumbnail', 'format'];
             
             for (const source of mediaSources) {
               if (nft.media[0][source] && typeof nft.media[0][source] === 'string') {
                 mediaUrl = nft.media[0][source];
+                console.log(`Imagen encontrada en media[0].${source}:`, mediaUrl);
                 break;
               }
             }
@@ -358,12 +370,14 @@ async function loadUserNFTs(userAddress) {
           
           // 3. Si no encontramos la URL en media, buscar en otras ubicaciones
           if (!mediaUrl && nft.metadata) {
+            console.log("Buscando en metadata:", nft.metadata);
             // Buscar en varias propiedades que comúnmente contienen URLs de imágenes
             const imageProps = ['image', 'image_url', 'imageUrl', 'imageURI', 'image_uri', 'imageData'];
             
             for (const prop of imageProps) {
               if (nft.metadata[prop] && typeof nft.metadata[prop] === 'string') {
                 mediaUrl = nft.metadata[prop];
+                console.log(`Imagen encontrada en metadata.${prop}:`, mediaUrl);
                 break;
               }
             }
@@ -371,11 +385,13 @@ async function loadUserNFTs(userAddress) {
           
           // 4. Si no encontramos la URL en metadata, buscar directamente en el objeto
           if (!mediaUrl) {
+            console.log("Buscando en el objeto NFT principal");
             const imageProps = ['image', 'image_url', 'imageUrl', 'imageURI', 'image_uri'];
             
             for (const prop of imageProps) {
               if (nft[prop] && typeof nft[prop] === 'string') {
                 mediaUrl = nft[prop];
+                console.log(`Imagen encontrada en nft.${prop}:`, mediaUrl);
                 break;
               }
             }
@@ -383,6 +399,7 @@ async function loadUserNFTs(userAddress) {
           
           // 5. Último recurso: buscar cualquier URL en cualquier propiedad
           if (!mediaUrl && nft.metadata) {
+            console.log("Buscando cualquier URL en metadata");
             for (const key in nft.metadata) {
               const value = nft.metadata[key];
               if (typeof value === 'string' && 
@@ -395,17 +412,21 @@ async function loadUserNFTs(userAddress) {
           }
           
           // Verificar y corregir URLs de IPFS
-          if (mediaUrl.startsWith('ipfs://')) {
+          if (mediaUrl && mediaUrl.startsWith('ipfs://')) {
+            const originalUrl = mediaUrl;
             mediaUrl = mediaUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            console.log(`URL IPFS convertida: ${originalUrl} -> ${mediaUrl}`);
           }
           
           // Para URLs de Arweave
-          if (mediaUrl.startsWith('ar://')) {
+          if (mediaUrl && mediaUrl.startsWith('ar://')) {
+            const originalUrl = mediaUrl;
             mediaUrl = mediaUrl.replace('ar://', 'https://arweave.net/');
+            console.log(`URL Arweave convertida: ${originalUrl} -> ${mediaUrl}`);
           }
           
           // Imprimir para depuración
-          console.log(`NFT #${tokenIdInt} image URL:`, mediaUrl);
+          console.log(`NFT #${tokenIdInt} image URL FINAL:`, mediaUrl);
           
           return {
             contract: nft.contract.address,
@@ -420,6 +441,8 @@ async function loadUserNFTs(userAddress) {
           return null;
         }
       }).filter(nft => nft !== null); // Filtrar los NFTs que fallaron al procesarse
+      
+      console.log("NFTs procesados finales:", ownedNFTs);
       
       if (ownedNFTs.length > 0) {
         // Display NFTs
@@ -465,10 +488,12 @@ function renderNFTGrid(container) {
       ? nft.media 
       : "https://placehold.co/400x400?text=NFT+Image";
     
+    console.log(`Renderizando NFT #${nft.tokenId} con imagen:`, imageUrl);
+    
     nftCard.innerHTML = `
       <div class="nft-image-container">
         <img src="${imageUrl}" class="nft-image" alt="${nft.title}" 
-             onerror="this.onerror=null; this.src='https://placehold.co/400x400?text=NFT+Image'" 
+             onerror="console.error('Error cargando imagen:', this.src); this.onerror=null; this.src='https://placehold.co/400x400?text=NFT+Image'" 
              loading="lazy">
       </div>
       <div class="token-info">

@@ -17,74 +17,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
 
-      - name: Create .env.local
+      - name: Create simple static site
         run: |
-          cat > .env.local << EOL
-          NEXT_PUBLIC_INFURA_API_KEY=${{ secrets.NEXT_PUBLIC_INFURA_API_KEY || 'cc0c8013b1e044dcba79d4f7ec3b2ba1' }}
-          NEXT_PUBLIC_CONTRACT_ADDRESS=0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99
-          NEXT_PUBLIC_BASE_CHAINID=8453
-          NEXT_PUBLIC_ADRIAN_TOKEN_ADDRESS=${{ secrets.NEXT_PUBLIC_ADRIAN_TOKEN_ADDRESS || '' }}
-          EOL
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm install --save crypto-browserify stream-browserify path-browserify os-browserify
-
-      - name: Build Next.js app
-        run: npm run build
-        env:
-          NODE_ENV: production
-
-      - name: Setup fallback and diagnostic files
-        run: |
+          # Crear directorio de despliegue
+          mkdir -p build
+          
+          # Copiar archivos estáticos
+          cp index.html build/
+          cp auction.js build/
+          
           # Crear archivo .nojekyll para evitar procesamiento de Jekyll
-          touch out/.nojekyll
-          
-          # Copiar archivos de public a la carpeta out
-          cp -R public/* out/ || true
-          
-          # Copiar el índice de la raíz como alternativa
-          cp index.html out/index.html || true
-          
-          # Copiar la versión estática
-          mkdir -p out/static-version
-          cp -R static-version/* out/static-version/ || true
-          
-          # Copiar archivos de diagnóstico
-          cp diagnostics.html out/diagnostics.html || true
-          
-          # Crear página de fallback básica
-          cat > out/fallback.html << EOL
-          <!DOCTYPE html>
-          <html lang="es">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Adrian Auctions - Fallback</title>
-              <style>
-                  body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto; padding: 20px; }
-                  h1 { color: #0070f3; }
-                  .btn { display: inline-block; background: #0070f3; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; }
-              </style>
-          </head>
-          <body>
-              <h1>Adrian Auctions - Página de Respaldo</h1>
-              <p>La aplicación principal no pudo cargarse correctamente. Por favor, utiliza una de las siguientes opciones:</p>
-              <p><a href="/AdrianAuctions/static-version/" class="btn">Versión Estática</a></p>
-              <p><a href="/AdrianAuctions/diagnostics.html" class="btn">Diagnóstico</a></p>
-          </body>
-          </html>
-          EOL
+          touch build/.nojekyll
           
           # Crear página 404 personalizada
-          cat > out/404.html << EOL
+          cat > build/404.html << EOL
           <!DOCTYPE html>
           <html lang="es">
           <head>
@@ -96,39 +45,26 @@ jobs:
                   h1 { color: #0070f3; }
                   .btn { display: inline-block; background: #0070f3; color: white; padding: 8px 16px; text-decoration: none; border-radius: 4px; margin: 8px; }
               </style>
-              <script>
-                  // Redireccionar a la página principal si se accede directamente a una ruta de la aplicación
-                  window.onload = function() {
-                      const path = window.location.pathname;
-                      if (path.includes('/explore') || path.includes('/myauctions')) {
-                          window.location.href = '/AdrianAuctions/';
-                      }
-                  };
-              </script>
           </head>
           <body>
               <h1>404 - Página no encontrada</h1>
               <p>La página que estás buscando no existe o ha sido movida.</p>
               <div>
                   <a href="/AdrianAuctions/" class="btn">Ir al inicio</a>
-                  <a href="/AdrianAuctions/static-version/" class="btn">Versión Estática</a>
               </div>
           </body>
           </html>
           EOL
           
-          # Crear un archivo de prueba simple para verificar acceso
-          echo "La aplicación está desplegada correctamente." > out/test.txt
-          
           # Crear un robots.txt
-          cat > out/robots.txt << EOL
+          cat > build/robots.txt << EOL
           User-agent: *
           Allow: /
           Sitemap: https://adriangallery.github.io/AdrianAuctions/sitemap.xml
           EOL
           
           # Crear un sitemap básico
-          cat > out/sitemap.xml << EOL
+          cat > build/sitemap.xml << EOL
           <?xml version="1.0" encoding="UTF-8"?>
           <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
               <url>
@@ -136,27 +72,17 @@ jobs:
                   <lastmod>$(date -I)</lastmod>
                   <priority>1.0</priority>
               </url>
-              <url>
-                  <loc>https://adriangallery.github.io/AdrianAuctions/static-version/</loc>
-                  <lastmod>$(date -I)</lastmod>
-                  <priority>0.8</priority>
-              </url>
-              <url>
-                  <loc>https://adriangallery.github.io/AdrianAuctions/diagnostics.html</loc>
-                  <lastmod>$(date -I)</lastmod>
-                  <priority>0.5</priority>
-              </url>
           </urlset>
           EOL
           
           # Listar archivos para verificar
-          echo "Contenido del directorio de salida:"
-          ls -la out/
+          echo "Contenido del directorio de despliegue:"
+          ls -la build/
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./out
+          publish_dir: ./build
           force_orphan: true
           cname: ${{ secrets.CUSTOM_DOMAIN || '' }} 

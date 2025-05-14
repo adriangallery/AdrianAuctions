@@ -131,11 +131,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize Alchemy Web3
 function initAlchemyWeb3() {
-  if (window.AlchemyWeb3) {
-    alchemyWeb3 = AlchemyWeb3.createAlchemyWeb3(ALCHEMY_RPC_URL);
-    return true;
+  try {
+    if (window.AlchemyWeb3) {
+      console.log("Initializing AlchemyWeb3");
+      alchemyWeb3 = AlchemyWeb3.createAlchemyWeb3(ALCHEMY_RPC_URL);
+      console.log("AlchemyWeb3 initialized successfully");
+      return true;
+    }
+    console.error("AlchemyWeb3 not available");
+    return false;
+  } catch (err) {
+    console.error("Error initializing AlchemyWeb3:", err);
+    return false;
   }
-  return false;
 }
 
 // Check if wallet is connected
@@ -223,6 +231,16 @@ async function connectWallet() {
   }
 }
 
+// Check if user is on Base Network
+async function checkBaseNetwork() {
+  const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+  if (chainId !== BASE_NETWORK.chainId) {
+    showError("Please connect to Base Network to load your NFTs");
+    return false;
+  }
+  return true;
+}
+
 // Load NFTs from user's wallet using Alchemy API
 async function loadUserNFTs(userAddress) {
   const loadingElement = document.getElementById("loading-nfts");
@@ -243,6 +261,9 @@ async function loadUserNFTs(userAddress) {
   nftList.innerHTML = "";
   
   try {
+    // Check if we're on Base Network
+    if (!(await checkBaseNetwork())) return;
+    
     // Check if Alchemy is initialized
     if (!alchemyWeb3) {
       if (!initAlchemyWeb3()) {
@@ -250,14 +271,15 @@ async function loadUserNFTs(userAddress) {
       }
     }
     
-    // Use Alchemy's getNfts method to get all NFTs owned by the user
-    const alchemyResponse = await fetch(`${ALCHEMY_RPC_URL}/getNFTs/?owner=${userAddress}`);
+    // Use Alchemy's getNftsForOwner method to get all NFTs owned by the user
+    const alchemyResponse = await fetch(`https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=100`);
     
     if (!alchemyResponse.ok) {
       throw new Error("Failed to fetch NFTs from Alchemy API");
     }
     
     const nftsData = await alchemyResponse.json();
+    console.log("NFT data received:", nftsData);
     
     // Process NFTs
     if (nftsData.ownedNfts && nftsData.ownedNfts.length > 0) {
@@ -282,6 +304,7 @@ async function loadUserNFTs(userAddress) {
     }
   } catch (error) {
     console.error("Error loading NFTs:", error);
+    if (error.response) console.error("Response data:", await error.response.text());
     showError("Failed to load your NFTs. Please try again later.");
     loadingElement.style.display = "none";
     noNftsMessage.style.display = "block";

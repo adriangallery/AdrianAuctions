@@ -58,7 +58,6 @@ let readOnlyAuctionContract = null;
 let alchemyWeb3 = null;
 let ownedNFTs = [];
 let selectedNFT = null;
-let nftPageKey = null; // Para guardar la clave de paginación
 
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
@@ -243,41 +242,23 @@ async function checkBaseNetwork() {
 }
 
 // Load NFTs from user's wallet using Alchemy API
-async function loadUserNFTs(userAddress, isLoadMore = false) {
+async function loadUserNFTs(userAddress) {
   const loadingElement = document.getElementById("loading-nfts");
   const noNftsMessage = document.getElementById("no-nfts");
   const nftSelection = document.getElementById("nft-selection");
   const nftList = document.getElementById("nftList");
   const auctionDetails = document.getElementById("auction-details");
-  const loadMoreBtn = document.getElementById("load-more-nfts");
   
-  // Solo resetear estado si no estamos cargando más
-  if (!isLoadMore) {
-    ownedNFTs = [];
-    selectedNFT = null;
-    nftPageKey = null;
-    
-    // Mostrar indicador de carga
-    loadingElement.style.display = "block";
-    noNftsMessage.style.display = "none";
-    nftSelection.style.display = "none";
-    auctionDetails.style.display = "none";
-    nftList.innerHTML = "";
-    
-    // Ocultar botón de cargar más
-    if (loadMoreBtn) {
-      loadMoreBtn.style.display = "none";
-    }
-  } else {
-    // Si estamos cargando más, mostrar un spinner en el botón
-    if (loadMoreBtn) {
-      loadMoreBtn.innerHTML = `
-        <span class="loading-spinner d-inline-block" style="width: 20px; height: 20px;"></span>
-        Loading...
-      `;
-      loadMoreBtn.disabled = true;
-    }
-  }
+  // Reset state
+  ownedNFTs = [];
+  selectedNFT = null;
+  
+  // Show loading indicator
+  loadingElement.style.display = "block";
+  noNftsMessage.style.display = "none";
+  nftSelection.style.display = "none";
+  auctionDetails.style.display = "none";
+  nftList.innerHTML = "";
   
   try {
     // Check if we're on Base Network
@@ -290,15 +271,8 @@ async function loadUserNFTs(userAddress, isLoadMore = false) {
       }
     }
     
-    // Construir URL con o sin pageKey
-    let url = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=20`;
-    
-    if (isLoadMore && nftPageKey) {
-      url += `&pageKey=${nftPageKey}`;
-    }
-    
     // Use Alchemy's getNftsForOwner method to get all NFTs owned by the user
-    const alchemyResponse = await fetch(url);
+    const alchemyResponse = await fetch(`https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=100`);
     
     if (!alchemyResponse.ok) {
       throw new Error("Failed to fetch NFTs from Alchemy API");
@@ -307,12 +281,9 @@ async function loadUserNFTs(userAddress, isLoadMore = false) {
     const nftsData = await alchemyResponse.json();
     console.log("NFT data received:", nftsData);
     
-    // Guardar el pageKey para la próxima carga
-    nftPageKey = nftsData.pageKey || null;
-    
     // Process NFTs
     if (nftsData.ownedNfts && nftsData.ownedNfts.length > 0) {
-      const newNFTs = nftsData.ownedNfts.map(nft => {
+      ownedNFTs = nftsData.ownedNfts.map(nft => {
         return {
           contract: nft.contract.address,
           tokenId: parseInt(nft.id.tokenId, 16),
@@ -323,84 +294,28 @@ async function loadUserNFTs(userAddress, isLoadMore = false) {
         };
       });
       
-      // Añadir los nuevos NFTs al array existente
-      ownedNFTs = [...ownedNFTs, ...newNFTs];
-      
       // Display NFTs
-      renderNFTGrid(nftList, !isLoadMore);
-      
-      if (!isLoadMore) {
-        loadingElement.style.display = "none";
-        nftSelection.style.display = "block";
-      }
-      
-      // Gestionar botón "Load More"
-      updateLoadMoreButton(nftSelection, userAddress);
-    } else if (!isLoadMore) {
-      // Solo mostrar mensaje de "no NFTs" en la primera carga
+      renderNFTGrid(nftList);
+      loadingElement.style.display = "none";
+      nftSelection.style.display = "block";
+    } else {
       loadingElement.style.display = "none";
       noNftsMessage.style.display = "block";
-    } else {
-      // Si estamos cargando más pero no hay resultados, ocultar el botón
-      updateLoadMoreButton(nftSelection, userAddress, false);
     }
-    
   } catch (error) {
     console.error("Error loading NFTs:", error);
     if (error.response) console.error("Response data:", await error.response.text());
-    
-    if (!isLoadMore) {
-      // Solo mostrar error en la primera carga
-      showError("Failed to load your NFTs. Please try again later.");
-      loadingElement.style.display = "none";
-      noNftsMessage.style.display = "block";
-    } else {
-      // Restaurar el botón de cargar más
-      if (loadMoreBtn) {
-        loadMoreBtn.innerHTML = "Load More NFTs";
-        loadMoreBtn.disabled = false;
-      }
-    }
-  }
-}
-
-// Actualizar botón de cargar más
-function updateLoadMoreButton(container, userAddress, show = true) {
-  // Buscar botón existente o crear uno nuevo
-  let loadMoreBtn = document.getElementById("load-more-nfts");
-  
-  if (!loadMoreBtn) {
-    loadMoreBtn = document.createElement("button");
-    loadMoreBtn.id = "load-more-nfts";
-    loadMoreBtn.className = "btn-action mt-4 w-100";
-    container.appendChild(loadMoreBtn);
-  }
-  
-  if (show && nftPageKey) {
-    loadMoreBtn.innerHTML = "Load More NFTs";
-    loadMoreBtn.style.display = "block";
-    loadMoreBtn.disabled = false;
-    
-    // Añadir evento click
-    loadMoreBtn.onclick = () => loadUserNFTs(userAddress, true);
-  } else {
-    loadMoreBtn.style.display = "none";
+    showError("Failed to load your NFTs. Please try again later.");
+    loadingElement.style.display = "none";
+    noNftsMessage.style.display = "block";
   }
 }
 
 // Render NFT grid for selection
-function renderNFTGrid(container, clearContainer = true) {
-  // Solo limpiar el contenedor si es necesario (primera carga)
-  if (clearContainer) {
-    container.innerHTML = "";
-  }
+function renderNFTGrid(container) {
+  container.innerHTML = "";
   
-  // Determinar el índice de inicio para añadir nuevos NFTs
-  const startIndex = clearContainer ? 0 : container.querySelectorAll(".auction-card").length;
-  
-  for (let i = startIndex; i < ownedNFTs.length; i++) {
-    const nft = ownedNFTs[i];
-    const index = i;
+  ownedNFTs.forEach((nft, index) => {
     const isSelected = selectedNFT && selectedNFT.contract === nft.contract && selectedNFT.tokenId === nft.tokenId;
     
     const nftCard = document.createElement("div");
@@ -423,7 +338,7 @@ function renderNFTGrid(container, clearContainer = true) {
     `;
     
     container.appendChild(nftCard);
-  }
+  });
 }
 
 // Select NFT for auction

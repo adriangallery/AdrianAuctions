@@ -59,7 +59,7 @@ let alchemyWeb3 = null;
 let ownedNFTs = [];
 let selectedNFT = null;
 // Variables para paginación de NFTs
-let nftLoadingPage = 0;
+let nftPageKey = null; // Almacenará la clave de paginación devuelta por Alchemy
 let nftPageSize = 20;
 let hasMoreNfts = true;
 
@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("create-tab").addEventListener("click", () => {
     if (currentAccount) {
       // Reiniciar estado de paginación cuando se cambia a la pestaña
-      nftLoadingPage = 0;
+      nftPageKey = null;
       ownedNFTs = [];
       hasMoreNfts = true;
       loadUserNFTs(currentAccount);
@@ -98,7 +98,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Botón Load More NFTs
   document.getElementById("loadMoreNftsBtn")?.addEventListener("click", () => {
     if (currentAccount && hasMoreNfts) {
-      nftLoadingPage++;
       loadUserNFTs(currentAccount, true); // true = append mode
     }
   });
@@ -271,6 +270,7 @@ async function loadUserNFTs(userAddress, appendMode = false) {
   if (!appendMode) {
     ownedNFTs = [];
     selectedNFT = null;
+    nftPageKey = null;
   }
   
   // Show loading indicator
@@ -295,21 +295,30 @@ async function loadUserNFTs(userAddress, appendMode = false) {
       }
     }
     
+    // Construir URL con paginación usando el pageKey si existe
+    let alchemyUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=${nftPageSize}`;
+    if (nftPageKey && appendMode) {
+      alchemyUrl += `&pageKey=${encodeURIComponent(nftPageKey)}`;
+    }
+    
+    console.log(`Solicitando NFTs con URL: ${alchemyUrl}`);
+    
     // Use Alchemy's getNFTsForOwner method to get all NFTs owned by the user with paginación
-    const alchemyResponse = await fetch(
-      `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?` +
-      `owner=${userAddress}&withMetadata=true&pageSize=${nftPageSize}&pageKey=${nftLoadingPage > 0 ? nftLoadingPage : ''}`
-    );
+    const alchemyResponse = await fetch(alchemyUrl);
     
     if (!alchemyResponse.ok) {
       throw new Error("Failed to fetch NFTs from Alchemy API");
     }
     
     const nftsData = await alchemyResponse.json();
-    console.log(`Página ${nftLoadingPage} - NFT data received:`, nftsData);
+    console.log(`Página NFT data received:`, nftsData);
+    
+    // Guardar la clave de paginación para la próxima solicitud
+    nftPageKey = nftsData.pageKey;
+    console.log("Nueva pageKey:", nftPageKey);
     
     // Verificar si hay más páginas disponibles
-    hasMoreNfts = nftsData.pageKey !== undefined && nftsData.pageKey !== null;
+    hasMoreNfts = nftPageKey !== undefined && nftPageKey !== null;
     console.log("¿Hay más NFTs para cargar?", hasMoreNfts ? "Sí" : "No");
     
     // Imprimir un ejemplo completo del primer NFT para depuración

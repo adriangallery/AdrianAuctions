@@ -1540,7 +1540,7 @@ async function cancelAuction(auctionId) {
   }
 }
 
-// Función para crear una nueva subasta - VERSIÓN DIRECTA
+// Función para crear una nueva subasta - VERSIÓN ULTRA OPTIMIZADA PARA GAS
 async function createNewAuction(nftContract, tokenId, reservePrice, durationHours) {
   if (!window.ethereum || !currentAccount) {
     showError("Por favor, conecta tu wallet primero");
@@ -1566,7 +1566,9 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     showSuccess("Solicitando permiso para utilizar el NFT...");
     
     try {
-      const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true);
+      const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
+        gasLimit: 250000 // Límite de gas específico para aprobación
+      });
       console.log("Transacción de aprobación enviada:", approveTx.hash);
       
       showSuccess("Confirmando aprobación...");
@@ -1578,11 +1580,14 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       await new Promise(resolve => setTimeout(resolve, 3000));
       
     } catch (error) {
-      console.warn("Error en aprobación global, esto no es crítico si ya estaba aprobado:", error);
-      // Continuamos de todos modos, ya que puede que ya esté aprobado o que la aprobación no sea necesaria
+      console.warn("Error en aprobación global, continuando de todos modos:", error);
+      // Si el error es de tipo "user rejected", detenemos el proceso
+      if (error.code === 4001) {
+        throw new Error("Transacción de aprobación rechazada por el usuario");
+      }
     }
     
-    // 3. Crear la subasta directamente
+    // 3. Crear la subasta con un límite de gas aún más alto
     console.log("Creando instancia del contrato de subastas:", CONTRACT_ADDRESS);
     const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
@@ -1602,26 +1607,61 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       durationSeconds
     });
     
-    // Usar un límite de gas fijo alto
-    const gasLimit = 800000; // Valor alto para asegurar que hay suficiente gas
+    // Obtener datos de gas actuales para Base Network
+    const feeData = await provider.getFeeData();
+    console.log("Datos de tarifas actuales:", {
+      gasPrice: feeData.gasPrice?.toString(),
+      maxFeePerGas: feeData.maxFeePerGas?.toString(),
+      maxPriorityFeePerGas: feeData.maxPriorityFeePerGas?.toString()
+    });
+    
+    // Configurar opciones de gas optimizadas para Base
+    const gasLimit = 1800000; // Valor extremadamente alto para garantizar suficiente gas
+    
+    let gasOptions = {
+      gasLimit: gasLimit
+    };
+    
+    // Si estamos usando EIP-1559, configurar maxFeePerGas y maxPriorityFeePerGas
+    if (feeData.maxFeePerGas && feeData.maxPriorityFeePerGas) {
+      const priorityFee = feeData.maxPriorityFeePerGas.mul(150).div(100); // 50% más alto
+      const maxFee = feeData.maxFeePerGas.mul(140).div(100); // 40% más alto
+      
+      gasOptions.maxPriorityFeePerGas = priorityFee;
+      gasOptions.maxFeePerGas = maxFee;
+      
+      console.log("Usando opciones EIP-1559:", {
+        maxPriorityFeePerGas: priorityFee.toString(),
+        maxFeePerGas: maxFee.toString()
+      });
+    } else if (feeData.gasPrice) {
+      // Fallback a gasPrice tradicional
+      gasOptions.gasPrice = feeData.gasPrice.mul(130).div(100); // 30% más alto
+      console.log("Usando gasPrice tradicional:", gasOptions.gasPrice.toString());
+    }
+    
     console.log(`Usando límite de gas: ${gasLimit}`);
     
-    // Llamar al método createAuction del contrato
+    // Llamar al método createAuction del contrato con opciones de gas optimizadas
     const tx = await auctionContract.createAuction(
       nftContract,
       tokenId,
       reservePriceWei,
       durationSeconds,
-      {
-        gasLimit: gasLimit
-      }
+      gasOptions
     );
     
     console.log("Transacción enviada:", tx.hash);
-    showSuccess("Transacción enviada. Esperando confirmación...");
+    showSuccess(`Transacción enviada (${tx.hash.substring(0, 10)}...). Esperando confirmación...`);
     
-    const receipt = await tx.wait();
-    console.log("Transacción confirmada:", receipt);
+    // Esperar confirmación con un timeout más largo
+    const receipt = await tx.wait(2); // Esperar hasta 2 confirmaciones
+    console.log("Transacción confirmada. Receipt:", receipt);
+    
+    // Verificar explícitamente el estado de la transacción
+    if (receipt.status === 0) {
+      throw new Error("La transacción falló en la blockchain. Verifica los logs para más detalles.");
+    }
     
     // Buscar el evento AuctionCreated en los logs
     const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
@@ -1632,6 +1672,7 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       console.log("ID de la nueva subasta:", auctionId);
       showSuccess(`¡Subasta #${auctionId} creada con éxito!`);
     } else {
+      // Si no encontramos el evento específico pero la transacción fue exitosa
       showSuccess("¡Subasta creada con éxito!");
     }
     
@@ -1653,24 +1694,34 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     console.error("Error detallado:", error);
     
     if (error.data) console.error("Error data:", error.data);
-    if (error.transaction) console.error("Tx details:", error.transaction);
-    if (error.receipt) console.error("Receipt:", error.receipt);
-    
-    // Extraer código de error y datos para análisis más detallado
-    let errorData = null;
-    if (error.data && error.data.data) {
-      errorData = error.data.data;
-      console.error("Error data decoded:", errorData);
+    if (error.transaction) {
+      console.error("Tx details:", error.transaction);
+      console.error("Tx data:", error.transaction.data);
+    }
+    if (error.receipt) {
+      console.error("Receipt:", error.receipt);
+      console.error("Receipt status:", error.receipt.status);
+      console.error("Gas used:", error.receipt.gasUsed?.toString());
     }
     
-    // Proporcionar mensaje de error específico y claro para el usuario
+    // Análisis detallado del error
     let errorMessage = "Error al crear la subasta.";
+    
+    // Verificar si la transacción falló por gas
+    const gasLimitReached = 
+      error.receipt && 
+      error.receipt.status === 0 && 
+      error.receipt.gasUsed && 
+      error.receipt.gasUsed.gt(ethers.BigNumber.from("1000000"));
     
     if (error.code === 4001) {
       errorMessage = "Transacción rechazada por el usuario.";
     } else if (error.message.includes("insufficient funds")) {
       errorMessage = "Fondos insuficientes para completar la transacción.";
-    } else if (error.message.includes("execution reverted")) {
+    } else if (gasLimitReached) {
+      errorMessage = "La transacción consumió demasiado gas. Intenta nuevamente con un límite de gas más alto o contacta al soporte.";
+    } else if (error.receipt && error.receipt.status === 0) {
+      // Analizar la transacción fallida con más detalle
       if (error.message.includes("transfer of token that is not own") || 
           error.message.includes("not owner") || 
           error.message.includes("ERC721: caller is not token owner")) {
@@ -1678,14 +1729,18 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       } else if (error.message.includes("approved") || error.message.includes("allowance")) {
         errorMessage = "El NFT no está correctamente aprobado para la subasta. Intenta de nuevo.";
       } else {
-        errorMessage = "El contrato rechazó la transacción: " + (error.reason || error.message);
+        errorMessage = "La transacción falló en la blockchain. Posibles razones: error en el contrato, token no aprobado, o no eres propietario del NFT.";
       }
+    } else if (error.message.includes("transaction failed")) {
+      errorMessage = "La transacción falló. Esto puede deberse a un problema con el NFT o con los permisos de aprobación.";
     } else if (error.message.includes("gas")) {
-      errorMessage = "Error con el gas de la transacción. Podría necesitar más gas.";
+      errorMessage = "Error con el gas de la transacción. Intenta aumentar el límite de gas en tu wallet.";
     } else if (error.message.includes("timeout") || error.message.includes("timed out")) {
-      errorMessage = "La transacción expiró. La red podría estar congestionada.";
+      errorMessage = "La transacción expiró. La red podría estar congestionada. Revisa tu wallet para ver si la transacción se completó.";
     } else if (error.message.includes("network changed")) {
       errorMessage = "La red cambió durante la transacción. Por favor, vuelve a intentarlo.";
+    } else if (error.message.includes("replacement") || error.message.includes("underpriced")) {
+      errorMessage = "La transacción fue reemplazada o el precio de gas fue demasiado bajo. Intenta nuevamente con un precio de gas más alto.";
     } else {
       errorMessage = error.message || errorMessage;
     }

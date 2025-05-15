@@ -783,70 +783,29 @@ function selectNFT(index) {
   renderNFTGrid(document.getElementById("nftList"));
   
   // Show selected NFT in the auction details
-    console.log("=== FIN DE CREACIÓN DE SUBASTA EXITOSA ===");
-    
-    // Navegar a la pestaña de mis subastas
-    setTimeout(() => {
-      document.getElementById("myauctions-tab").click();
-    }, 1500);
-    
-  } catch (error) {
-    console.error("=== ERROR AL CREAR LA SUBASTA ===");
-    console.error("Error detallado:", error);
-    
-    if (error.data) console.error("Error data:", error.data);
-    if (error.transaction) {
-      console.error("Tx details:", error.transaction);
-      console.error("Tx data:", error.transaction.data);
-    }
-    if (error.receipt) {
-      console.error("Receipt:", error.receipt);
-      console.error("Receipt status:", error.receipt.status);
-      console.error("Gas used:", error.receipt.gasUsed?.toString());
-    }
-    
-    // Análisis detallado del error
-    let errorMessage = "Error al crear la subasta.";
-    
-    // Verificar si la transacción falló por gas
-    const gasLimitReached = 
-      error.receipt && 
-      error.receipt.status === 0 && 
-      error.receipt.gasUsed && 
-      error.receipt.gasUsed.gt(ethers.BigNumber.from("1000000"));
-    
-    if (error.code === 4001) {
-      errorMessage = "Transacción rechazada por el usuario.";
-    } else if (error.message.includes("insufficient funds")) {
-      errorMessage = "Fondos insuficientes para completar la transacción.";
-    } else if (gasLimitReached) {
-      errorMessage = "La transacción consumió demasiado gas. Intenta nuevamente con un límite de gas más alto o contacta al soporte.";
-    } else if (error.receipt && error.receipt.status === 0) {
-      // Analizar la transacción fallida con más detalle
-      if (error.message.includes("transfer of token that is not own") || 
-          error.message.includes("not owner") || 
-          error.message.includes("ERC721: caller is not token owner")) {
-        errorMessage = "No eres el propietario de este NFT. Verifica que el token existe y te pertenece.";
-      } else if (error.message.includes("approved") || error.message.includes("allowance")) {
-        errorMessage = "El NFT no está correctamente aprobado para la subasta. Intenta de nuevo.";
-      } else {
-        errorMessage = "La transacción falló en la blockchain. Posibles razones: error en el contrato, token no aprobado, o no eres propietario del NFT.";
-      }
-    } else if (error.message.includes("transaction failed")) {
-      errorMessage = "La transacción falló. Esto puede deberse a un problema con el NFT o con los permisos de aprobación.";
-    } else if (error.message.includes("gas")) {
-      errorMessage = "Error con el gas de la transacción. Intenta aumentar el límite de gas en tu wallet.";
-    } else if (error.message.includes("timeout") || error.message.includes("timed out")) {
-      errorMessage = "La transacción expiró. La red podría estar congestionada. Revisa tu wallet para ver si la transacción se completó.";
-    } else if (error.message.includes("network changed")) {
-      errorMessage = "La red cambió durante la transacción. Por favor, vuelve a intentarlo.";
-    } else if (error.message.includes("replacement") || error.message.includes("underpriced")) {
-      errorMessage = "La transacción fue reemplazada o el precio de gas fue demasiado bajo. Intenta nuevamente con un precio de gas más alto.";
-    } else {
-      errorMessage = error.message || errorMessage;
-    }
-    
-    console.error("Mensaje de error mostrado:", errorMessage);
-    showError(errorMessage);
-  }
+  const selectedNftDisplay = document.getElementById("selectedNftDisplay");
+  const auctionDetails = document.getElementById("auction-details");
+  
+  // Asegurar que la URL de la imagen es válida
+  const imageUrl = (typeof selectedNFT.media === 'string' && selectedNFT.media) 
+    ? selectedNFT.media 
+    : "https://placehold.co/400x400?text=NFT+Image";
+  
+  selectedNftDisplay.innerHTML = `
+    <img src="${imageUrl}" class="me-3" style="width: 50px; height: 50px; object-fit: contain;" 
+         onerror="this.onerror=null; this.src='https://placehold.co/400x400?text=NFT+Image'">
+    <div>
+      <strong>${selectedNFT.title}</strong>
+      <div>Token ID: ${selectedNFT.tokenId}</div>
+    </div>
+  `;
+  
+  // Set hidden fields
+  document.getElementById("nftContract").value = selectedNFT.contract;
+  document.getElementById("tokenId").value = selectedNFT.tokenId;
+  
+  // Show auction details
+  auctionDetails.style.display = "block";
+  
+  showSuccess("NFT selected for auction");
 } 

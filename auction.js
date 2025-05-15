@@ -1,8 +1,8 @@
 // Adrian Auction DApp - Main JavaScript functionality
 
 // Contract Constants
-const CONTRACT_ADDRESS = "0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99";
-const ADRIAN_TOKEN_ADDRESS = "0x6c9c44334093eB53C7acEAE32DCEC8E945D27b28"; // Hypothetical ADRIAN token address
+const CONTRACT_ADDRESS = "0xd7d6e8b07b424e7edeac15ffffdcf2767c3745c8";
+const ADRIAN_TOKEN_ADDRESS = "0x7E99075Ce287F1cF8cBCAaa6A1C7894e404fD7Ea"; // ADRIAN token address
 const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
 const ALCHEMY_RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 const RPC_URL = ALCHEMY_RPC_URL;
@@ -1584,7 +1584,7 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
 
   // Convertir precio formateado a wei (BigNumber)
   const reservePriceWei = ethers.utils.parseEther(formattedReservePrice);
-  console.log("Precio de reserva en wei:", reservePriceWei.toString());
+  console.log("Precio de reserva en tokens ADRIAN (wei):", reservePriceWei.toString());
 
   // Validar y convertir duración
   let durationSecs;
@@ -1636,7 +1636,44 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       }
     }
     
-    // 3. Crear la subasta con un límite de gas aún más alto
+    // 3. Verificar y aprobar tokens ADRIAN para el precio de reserva
+    console.log("Inicializando contrato de token ADRIAN:", ADRIAN_TOKEN_ADDRESS);
+    const tokenContract = new ethers.Contract(ADRIAN_TOKEN_ADDRESS, ERC20_ABI, signer);
+    
+    // Comprobar allowance
+    console.log("Verificando allowance actual de tokens ADRIAN para el contrato de subastas");
+    const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
+    console.log("Allowance actual de ADRIAN:", allowance.toString());
+    
+    if (allowance.lt(reservePriceWei)) {
+      console.log("Allowance insuficiente de tokens ADRIAN, solicitando aprobación...");
+      showSuccess("Aprobando tokens ADRIAN para la subasta...");
+      
+      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
+      console.log("Transacción de aprobación de tokens ADRIAN enviada:", approveTx.hash);
+      
+      showSuccess("Confirmando aprobación de tokens ADRIAN...");
+      const approveReceipt = await approveTx.wait();
+      console.log("Recibo de aprobación de tokens ADRIAN:", approveReceipt);
+      
+      if (approveReceipt.status === 0) {
+        throw new Error("La transacción de aprobación de tokens ADRIAN falló");
+      }
+      
+      // Verificar la aprobación después de la transacción
+      const newAllowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
+      console.log("Nuevo allowance de tokens ADRIAN después de la aprobación:", newAllowance.toString());
+      
+      if (newAllowance.lt(reservePriceWei)) {
+        throw new Error("La aprobación de tokens ADRIAN se completó pero el allowance sigue siendo insuficiente");
+      }
+      
+      showSuccess("Tokens ADRIAN aprobados correctamente");
+    } else {
+      console.log("Allowance suficiente de tokens ADRIAN para la subasta");
+    }
+    
+    // 4. Crear la subasta con un límite de gas optimizado
     console.log("Creando instancia del contrato de subastas:", CONTRACT_ADDRESS);
     const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     

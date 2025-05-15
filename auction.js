@@ -1,7 +1,7 @@
 // Adrian Auction DApp - Main JavaScript functionality
 
 // Contract Constants
-const CONTRACT_ADDRESS = "0xb502e19e62eE8D5Ee1F179b489d832EAb328Bc99";
+const CONTRACT_ADDRESS = "0xd7d6e8b07b424e7edeac15ffffdcf2767c3745c8";
 const ADRIAN_TOKEN_ADDRESS = "0x6c9c44334093eB53C7acEAE32DCEC8E945D27b28"; // Hypothetical ADRIAN token address
 const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
 const ALCHEMY_RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
@@ -22,6 +22,7 @@ const AUCTION_ABI = [
   "function endAuction(uint256) external",
   "function cancelAuction(uint256) external",
   "function relistAuction(uint256,uint256,uint256) external",
+  "function finalizeExpiredAuction(uint256) external", // NUEVA FUNCIÓN
   
   // Events
   "event AuctionCreated(uint256 indexed auctionId, address seller, address nftContract, uint256 tokenId, uint256 reservePrice, uint256 endTime)",
@@ -29,7 +30,8 @@ const AUCTION_ABI = [
   "event BidRefunded(uint256 indexed auctionId, address bidder, uint256 amount)",
   "event AuctionEnded(uint256 indexed auctionId, address winner, uint256 amount)",
   "event AuctionCancelled(uint256 indexed auctionId)",
-  "event AuctionExtended(uint256 indexed auctionId, uint256 newEndTime)"
+  "event AuctionExtended(uint256 indexed auctionId, uint256 newEndTime)",
+  "event TransferFailed(address nftContract, uint256 tokenId, address from, address to, string reason)" // NUEVO EVENTO
 ];
 
 const ERC20_ABI = [
@@ -192,6 +194,101 @@ function initAlchemyWeb3() {
   }
 }
 
+// Escuchar eventos del contrato
+function listenForContractEvents() {
+  console.log("Configurando listeners para eventos del contrato...");
+  
+  // Monitorear eventos AuctionCreated
+  auctionContract.on("AuctionCreated", (auctionId, seller, nftContract, tokenId, reservePrice, endTime) => {
+    console.log("Evento AuctionCreated detectado:", {
+      auctionId: auctionId.toString(),
+      seller,
+      nftContract,
+      tokenId: tokenId.toString(),
+      reservePrice: formatEther(reservePrice),
+      endTime: endTime.toString()
+    });
+    
+    showSuccess(`¡Nueva subasta #${auctionId} creada!`);
+    loadActiveAuctions();
+  });
+  
+  // Monitorear eventos BidPlaced
+  auctionContract.on("BidPlaced", (auctionId, bidder, amount) => {
+    console.log("Evento BidPlaced detectado:", {
+      auctionId: auctionId.toString(),
+      bidder,
+      amount: formatEther(amount)
+    });
+    
+    if (bidder.toLowerCase() === currentAccount.toLowerCase()) {
+      showSuccess(`Tu oferta de ${formatEther(amount)} ADRIAN en la subasta #${auctionId} ha sido recibida`);
+    } else {
+      showSuccess(`Nueva oferta de ${formatEther(amount)} ADRIAN en la subasta #${auctionId}`);
+    }
+    
+    loadActiveAuctions();
+  });
+  
+  // Monitorear eventos BidRefunded
+  auctionContract.on("BidRefunded", (auctionId, bidder, amount) => {
+    console.log("Evento BidRefunded detectado:", {
+      auctionId: auctionId.toString(),
+      bidder,
+      amount: formatEther(amount)
+    });
+    
+    if (bidder.toLowerCase() === currentAccount.toLowerCase()) {
+      showSuccess(`Tu oferta de ${formatEther(amount)} ADRIAN en la subasta #${auctionId} ha sido reembolsada`);
+    }
+  });
+  
+  // Monitorear eventos AuctionEnded
+  auctionContract.on("AuctionEnded", (auctionId, winner, amount) => {
+    console.log("Evento AuctionEnded detectado:", {
+      auctionId: auctionId.toString(),
+      winner,
+      amount: formatEther(amount)
+    });
+    
+    if (winner.toLowerCase() === currentAccount.toLowerCase()) {
+      showSuccess(`¡Has ganado la subasta #${auctionId} con una oferta de ${formatEther(amount)} ADRIAN!`);
+    } else if (winner === ethers.constants.AddressZero) {
+      showSuccess(`La subasta #${auctionId} ha finalizado sin ganador`);
+    } else {
+      showSuccess(`La subasta #${auctionId} ha finalizado. Ganador: ${formatAddress(winner)}`);
+    }
+    
+    loadActiveAuctions();
+  });
+  
+  // Monitorear eventos AuctionCancelled
+  auctionContract.on("AuctionCancelled", (auctionId) => {
+    console.log("Evento AuctionCancelled detectado:", {
+      auctionId: auctionId.toString()
+    });
+    
+    showSuccess(`La subasta #${auctionId} ha sido cancelada`);
+    loadActiveAuctions();
+  });
+  
+  // Monitorear eventos TransferFailed
+  auctionContract.on("TransferFailed", (nftContract, tokenId, from, to, reason) => {
+    console.log("Evento TransferFailed detectado:", {
+      nftContract,
+      tokenId: tokenId.toString(),
+      from,
+      to,
+      reason
+    });
+    
+    // Mostrar advertencia al usuario
+    showError(`Problema al transferir NFT: ${reason}. El contrato o el administrador intentarán resolver esto.`);
+  });
+  
+  console.log("Listeners de eventos configurados correctamente");
+}
+
 // Check if wallet is connected
 async function checkConnection() {
   if (window.ethereum) {
@@ -248,6 +345,9 @@ async function connectWallet() {
     // Create contract instances
     readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
     auctionContract = readOnlyAuctionContract.connect(signer);
+    
+    // Escuchar eventos del contrato
+    listenForContractEvents();
     
     // Initialize Alchemy Web3
     initAlchemyWeb3();
@@ -905,6 +1005,7 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   const endingSoon = auction.active && timeRemaining < 900;
   const reserveMet = auction.highestBid >= auction.reservePrice;
   const isEnded = !auction.active || timeRemaining <= 0;
+  const isExpired = auction.active && timeRemaining <= 0;
   const hasWinner = auction.highestBidder !== ethers.constants.AddressZero && auction.highestBid.gt(0) && auction.highestBid.gte(auction.reservePrice);
   
   console.log(`Subasta #${auctionId} estado:`, {
@@ -912,6 +1013,7 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     endingSoon,
     reserveMet,
     isEnded,
+    isExpired,
     hasWinner,
     isOwner,
     isHighestBidder
@@ -1039,12 +1141,15 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
       actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalizar Subasta</button>`;
     } else if (isOwner && auction.highestBid.isZero()) {
       actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancelar Subasta</button>`;
-    } else if (!isOwner) {
+    } else if (!isOwner && timeRemaining > 0) {
       actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${auction.highestBid}', '${auction.reservePrice}', '${auction.nftContract}', ${auction.tokenId})">Ofertar</button>`;
+    } else if (isExpired) {
+      // NUEVA SECCIÓN: Permitir que cualquier usuario finalice subastas expiradas
+      actionButtons = `<button class="btn-action w-100" onclick="finalizeExpiredAuction(${auctionId})">Finalizar Subasta Expirada</button>`;
     }
   } else if (isOwner && !auction.active && auction.finalized && 
             (auction.highestBidder === ethers.constants.AddressZero || auction.highestBid.lt(auction.reservePrice))) {
-    // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
+    // Show relist option
     actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Volver a Listar</button>`;
   }
   
@@ -1557,34 +1662,59 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     console.log("Provider y signer inicializados correctamente");
     showSuccess("Iniciando proceso de creación de subasta...");
     
-    // 1. Crear instancia del contrato NFT y aprobar directamente
+    // 1. Verificar y aprobar el NFT para el contrato
     console.log("Creando instancia de contrato NFT:", nftContract);
     const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
     
-    // 2. APROBAR EL TOKEN MEDIANTE setApprovalForAll (método más confiable)
-    console.log("Solicitando aprobación mediante setApprovalForAll...");
-    showSuccess("Solicitando permiso para utilizar el NFT...");
+    // Verificar primero si ya está aprobado específicamente
+    let isApproved = false;
     
     try {
-      const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
-        gasLimit: 250000 // Límite de gas específico para aprobación
-      });
-      console.log("Transacción de aprobación enviada:", approveTx.hash);
-      
-      showSuccess("Confirmando aprobación...");
-      const approveReceipt = await approveTx.wait();
-      console.log("Aprobación confirmada:", approveReceipt);
-      
-      // Esperar un breve periodo para asegurar que la blockchain ha procesado la aprobación
-      console.log("Esperando 3 segundos para asegurar que la aprobación se ha procesado...");
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
+      const approvedAddress = await nftContractInstance.getApproved(tokenId);
+      console.log("Dirección aprobada actual para el token:", approvedAddress);
+      isApproved = (approvedAddress.toLowerCase() === CONTRACT_ADDRESS.toLowerCase());
+      console.log("¿El token ya está aprobado específicamente?:", isApproved);
     } catch (error) {
-      console.warn("Error en aprobación global, continuando de todos modos:", error);
-      // Si el error es de tipo "user rejected", detenemos el proceso
-      if (error.code === 4001) {
-        throw new Error("Transacción de aprobación rechazada por el usuario");
+      console.warn("No se pudo verificar getApproved:", error);
+    }
+    
+    // Si no está aprobado específicamente, solicitar aprobación para este token específico
+    if (!isApproved) {
+      console.log("Token no aprobado, solicitando aprobación específica para tokenId:", tokenId);
+      showSuccess("Aprobando NFT específico para la subasta...");
+      
+      try {
+        const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenId, {
+          gasLimit: 250000 // Límite de gas específico para aprobación
+        });
+        console.log("Transacción de aprobación específica enviada:", approveTx.hash);
+        
+        showSuccess("Confirmando aprobación del NFT...");
+        const approveReceipt = await approveTx.wait();
+        console.log("Recibo de aprobación:", approveReceipt);
+        
+        if (approveReceipt.status === 0) {
+          throw new Error("La transacción de aprobación falló");
+        }
+        
+        // Esperar 3 segundos para asegurar que la blockchain ha procesado la aprobación
+        console.log("Esperando 3 segundos para asegurar que la aprobación se ha procesado completamente...");
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        console.log("Aprobación específica completada con éxito");
+        showSuccess(`NFT #${tokenId} aprobado correctamente`);
+      } catch (error) {
+        console.error("Error al aprobar el token:", error);
+        
+        if (error.code === 4001) {
+          throw new Error("Aprobación rechazada por el usuario.");
+        } else {
+          throw new Error("No se pudo aprobar el NFT: " + (error.message || "Error desconocido"));
+        }
       }
+    } else {
+      console.log(`El NFT #${tokenId} ya está aprobado para el contrato`);
+      showSuccess(`NFT #${tokenId} ya está aprobado para el contrato`);
     }
     
     // 3. Crear la subasta con un límite de gas aún más alto
@@ -1954,4 +2084,86 @@ function showRelistModal(auctionId) {
   // Show modal
   const relistModal = new bootstrap.Modal(document.getElementById('relistModal'));
   relistModal.show();
+}
+
+// Función para que cualquier usuario pueda finalizar una subasta expirada
+async function finalizeExpiredAuction(auctionId) {
+  if (!window.ethereum || !currentAccount) {
+    showError("Por favor, conecta tu wallet primero");
+    return;
+  }
+  
+  console.log("=== INICIO DE FINALIZACIÓN DE SUBASTA EXPIRADA ===");
+  console.log("Finalizando subasta ID:", auctionId);
+  
+  try {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider.getSigner();
+    
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+    
+    // Realizar la transacción
+    showSuccess("Enviando transacción para finalizar la subasta...");
+    console.log("Enviando transacción finalizeExpiredAuction");
+    
+    const tx = await contract.finalizeExpiredAuction(auctionId);
+    console.log("Transacción enviada:", tx.hash);
+    
+    showSuccess("Confirmando finalización de la subasta...");
+    const receipt = await tx.wait();
+    console.log("Recibo de la transacción:", receipt);
+    
+    if (receipt.status === 0) {
+      throw new Error("La transacción de finalización falló");
+    }
+    
+    // Buscar evento AuctionEnded en los logs
+    const auctionEndedEvent = receipt.events?.find(e => e.event === 'AuctionEnded');
+    console.log("Evento AuctionEnded:", auctionEndedEvent);
+    
+    if (auctionEndedEvent && auctionEndedEvent.args) {
+      console.log("Argumentos del evento:", auctionEndedEvent.args);
+      const winner = auctionEndedEvent.args.winner;
+      const amount = auctionEndedEvent.args.amount;
+      
+      if (winner !== ethers.constants.AddressZero) {
+        showSuccess(`¡Subasta finalizada con éxito! Ganador: ${formatAddress(winner)} con ${formatEther(amount)} ADRIAN`);
+      } else {
+        showSuccess("¡Subasta finalizada sin ganador!");
+      }
+    } else {
+      showSuccess("¡Subasta finalizada con éxito!");
+    }
+    
+    console.log("=== FIN DE FINALIZACIÓN DE SUBASTA EXITOSA ===");
+    
+    // Recargar las vistas
+    loadActiveAuctions();
+    
+  } catch (error) {
+    console.error("=== ERROR AL FINALIZAR LA SUBASTA ===");
+    console.error("Error detallado:", error);
+    
+    // Proporcionar mensaje de error más específico
+    let errorMessage = "Error al finalizar la subasta.";
+    
+    if (error.code === 4001) {
+      errorMessage = "Transacción rechazada por el usuario.";
+    } else if (error.message.includes("execution reverted")) {
+      const revertReason = error.data?.message || error.message;
+      
+      if (revertReason.includes("Already ended")) {
+        errorMessage = "La subasta ya ha sido finalizada.";
+      } else if (revertReason.includes("Auction still active")) {
+        errorMessage = "La subasta aún no ha terminado su tiempo.";
+      } else {
+        errorMessage = `La transacción falló: ${revertReason}`;
+      }
+    } else {
+      errorMessage = error.message || errorMessage;
+    }
+    
+    console.error("Mensaje de error mostrado al usuario:", errorMessage);
+    showError(errorMessage);
+  }
 } 

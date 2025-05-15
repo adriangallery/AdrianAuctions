@@ -1657,7 +1657,7 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     });
     
     // Configurar opciones de gas optimizadas para Base
-    const gasLimit = 1800000; // Valor extremadamente alto para garantizar suficiente gas
+    const gasLimit = 500000; // Valor razonable para la creación de una subasta
     
     let gasOptions = {
       gasLimit: gasLimit

@@ -831,14 +831,26 @@ async function loadActiveAuctions() {
   auctionsList.innerHTML = "";
   
   try {
+    console.log("Fetching active auctions count...");
+    // 1. First, get the total count of active auctions
     const count = await readOnlyAuctionContract.getActiveAuctionsCount();
-    const pages = Math.ceil(count.toNumber() / 50);
-    let allIds = [];
+    console.log(`Active auctions count: ${count.toString()}`);
     
+    // 2. Calculate how many pages we need (contract limits to 50 per page)
+    const pageSize = 50; // Contract has MAX_AUCTIONS_PER_PAGE = 50
+    const pages = Math.ceil(count.toNumber() / pageSize);
+    console.log(`Need to fetch ${pages} pages of auction IDs`);
+    
+    // 3. Fetch all auction IDs from all pages
+    let allIds = [];
     for (let i = 0; i < pages; i++) {
-      const ids = await readOnlyAuctionContract.getActiveAuctions(i, 50);
+      console.log(`Fetching auction IDs page ${i}...`);
+      const ids = await readOnlyAuctionContract.getActiveAuctions(i, pageSize);
+      console.log(`Page ${i} IDs:`, ids.map(id => id.toString()));
       allIds = allIds.concat(ids.map(id => id.toNumber()));
     }
+    
+    console.log(`Total auction IDs fetched: ${allIds.length}`);
     
     if (allIds.length === 0) {
       loadingElement.style.display = "none";
@@ -846,10 +858,15 @@ async function loadActiveAuctions() {
       return;
     }
     
+    // 4. Now get the detailed information for all auction IDs at once
+    console.log("Fetching auction details...");
     const details = await readOnlyAuctionContract.getManyAuctionDetails(allIds);
-    const filter = document.getElementById("filterSelect").value;
+    console.log("Received auction details:", details);
     
+    const filter = document.getElementById("filterSelect").value;
     const now = Math.floor(Date.now() / 1000);
+    
+    // Filter auctions based on selection
     const filtered = details.filter((auction, index) => {
       // Ensure values are BigNumber objects
       const highestBid = ethers.BigNumber.from(String(auction.highestBid || '0'));
@@ -865,6 +882,8 @@ async function loadActiveAuctions() {
       if (filter === "endingSoon") return isActive && timeLeft < 900;
       return true;
     });
+    
+    console.log(`Filtered to ${filtered.length} auctions based on filter: ${filter}`);
     
     // Sort auctions - ending soon first
     filtered.sort((a, b) => {
@@ -882,17 +901,23 @@ async function loadActiveAuctions() {
     
     console.log(`Displaying ${filtered.length} auctions`);
     
-    // Create a mapping of auction IDs to their original indices
-    const idToIndexMap = {};
-    allIds.forEach((id, index) => {
-      idToIndexMap[id] = index;
-    });
-    
+    // 5. Process and display each auction
     for (let i = 0; i < filtered.length; i++) {
       const auction = filtered[i];
-      // Find the proper auctionId by looking up the original index
-      const originalIndex = idToIndexMap[allIds[i]] !== undefined ? idToIndexMap[allIds[i]] : i;
-      const auctionId = allIds[originalIndex];
+      const auctionId = allIds[details.indexOf(auction)]; // Get the correct auction ID
+      
+      // Debug log to see the exact data structure
+      console.log(`Auction #${auctionId} raw data:`, {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString(),
+        seller: auction.seller, 
+        reservePrice: auction.reservePrice?.toString(),
+        endTime: auction.endTime?.toString(),
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString(),
+        active: auction.active, // This might be 0/1 or true/false
+        finalized: auction.finalized // This might be 0/1 or true/false
+      });
       
       await renderAuction(auction, auctionId, auctionsList);
     }
@@ -918,7 +943,9 @@ async function loadUserAuctions(userAddress) {
   auctionsList.innerHTML = "";
   
   try {
+    console.log(`Fetching auctions for user ${userAddress}...`);
     const auctionIds = await readOnlyAuctionContract.getUserAuctions(userAddress);
+    console.log(`User auctions IDs:`, auctionIds.map(id => id.toString()));
     
     if (auctionIds.length === 0) {
       loadingElement.style.display = "none";
@@ -926,11 +953,26 @@ async function loadUserAuctions(userAddress) {
       return;
     }
     
+    console.log(`Fetching details for ${auctionIds.length} user auctions...`);
     const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    console.log(`User auction details received:`, details);
     
     for (let i = 0; i < details.length; i++) {
       const auction = details[i];
       const auctionId = auctionIds[i].toNumber();
+      
+      // Debug log to see the exact data structure
+      console.log(`User Auction #${auctionId} raw data:`, {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString(),
+        seller: auction.seller, 
+        reservePrice: auction.reservePrice?.toString(),
+        endTime: auction.endTime?.toString(),
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString(),
+        active: auction.active, // This might be 0/1 or true/false
+        finalized: auction.finalized // This might be 0/1 or true/false
+      });
       
       await renderAuction(auction, auctionId, auctionsList, true);
     }
@@ -956,7 +998,9 @@ async function loadUserBids(userAddress) {
   bidsList.innerHTML = "";
   
   try {
+    console.log(`Fetching bids for user ${userAddress}...`);
     const auctionIds = await readOnlyAuctionContract.getUserBids(userAddress);
+    console.log(`User bid auction IDs:`, auctionIds.map(id => id.toString()));
     
     if (auctionIds.length === 0) {
       loadingElement.style.display = "none";
@@ -964,14 +1008,30 @@ async function loadUserBids(userAddress) {
       return;
     }
     
+    console.log(`Fetching details for ${auctionIds.length} auctions with user bids...`);
     const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    console.log(`Bid auction details received:`, details);
     
     for (let i = 0; i < details.length; i++) {
       const auction = details[i];
       const auctionId = auctionIds[i].toNumber();
       
+      // Debug log to see the exact data structure
+      console.log(`Bid Auction #${auctionId} raw data:`, {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString(),
+        seller: auction.seller, 
+        reservePrice: auction.reservePrice?.toString(),
+        endTime: auction.endTime?.toString(),
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString(),
+        active: auction.active, // This might be 0/1 or true/false
+        finalized: auction.finalized // This might be 0/1 or true/false
+      });
+      
       // Check if user is highest bidder and highlight
       const isHighestBidder = auction.highestBidder.toLowerCase() === userAddress.toLowerCase();
+      console.log(`User is highest bidder for auction #${auctionId}: ${isHighestBidder}`);
       
       await renderAuction(auction, auctionId, bidsList, false, isHighestBidder);
     }

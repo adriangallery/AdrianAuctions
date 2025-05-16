@@ -456,6 +456,17 @@
                   <small class="text-muted">Auction duration in hours (minimum 1 hour)</small>
                 </div>
                 
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="useSimplifiedFlow" checked>
+                  <label class="form-check-label" for="useSimplifiedFlow">Usar flujo simplificado (recomendado)</label>
+                  <small class="form-text text-muted d-block">El flujo simplificado evita problemas de aprobación y es más rápido</small>
+                </div>
+
+                <div id="depositStatus" class="alert alert-info mb-3" style="display: none;">
+                  <span id="depositStatusText">NFT depositado. Puedes crear la subasta ahora.</span>
+                  <button id="withdrawNFTBtn" class="btn btn-sm btn-outline-primary ms-2">Recuperar NFT</button>
+                </div>
+                
                 <button type="submit" class="btn-action w-100">Create Auction</button>
               </div>
             </form>

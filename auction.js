@@ -1241,17 +1241,20 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   
   if (isActive && !isFinalized) {
     if (isOwner && endTime <= now) {
-      actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
+      actionButtons = `<button class="btn-action w-100 mb-2" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
     } else if (isOwner && highestBid.isZero()) {
-      actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
+      actionButtons = `<button class="btn-action w-100 mb-2" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
     } else if (!isOwner) {
-      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
+      actionButtons = `<button class="btn-action w-100 mb-2" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
     }
   } else if (isOwner && !isActive && isFinalized && 
             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
     // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
-    actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Relist</button>`;
+    actionButtons = `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
   }
+  
+  // Add share button to all auctions
+  actionButtons += `<button class="btn-secondary w-100" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
   
   // CRITICAL FIX - Time display logic
   let timeDisplay = '';
@@ -2476,3 +2479,368 @@ async function debugAuction(auctionId) {
 }
 
 // Call with an auction ID from the console, e.g.: debugAuction(1);
+
+// Function to share an auction
+function shareAuction(auctionId, nftName) {
+  // Get the base URL of the current site
+  const baseUrl = window.location.origin;
+  // Create the share URL for this specific auction
+  const shareUrl = `${baseUrl}/auction-details.html?id=${auctionId}`;
+  
+  // Create modal for sharing
+  const modalHTML = `
+    <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Share Auction #${auctionId}</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Share this auction with others:</p>
+            
+            <div class="input-group mb-3">
+              <input type="text" class="form-control" id="shareUrlInput" value="${shareUrl}" readonly>
+              <button class="btn btn-outline-secondary" type="button" id="copyShareUrl">Copy</button>
+            </div>
+            
+            <div class="share-buttons mt-3 d-flex gap-2">
+              <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction!`)}" target="_blank" class="btn btn-sm text-white" style="background-color: #1DA1F2;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                </svg>
+                Twitter
+              </a>
+              <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}" target="_blank" class="btn btn-sm text-white" style="background-color: #3b5998;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
+                  <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                </svg>
+                Facebook
+              </a>
+              <a href="https://wa.me/?text=${encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! ${shareUrl}`)}" target="_blank" class="btn btn-sm text-white" style="background-color: #25D366;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+                  <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                </svg>
+                WhatsApp
+              </a>
+              <a href="https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction!`)}" target="_blank" class="btn btn-sm text-white" style="background-color: #0088cc;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
+                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
+                </svg>
+                Telegram
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Remove any existing share modal
+  const existingModal = document.getElementById('shareModal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  // Initialize modal
+  const shareModal = new bootstrap.Modal(document.getElementById('shareModal'));
+  shareModal.show();
+  
+  // Set up copy functionality
+  document.getElementById('copyShareUrl').addEventListener('click', function() {
+    const shareUrlInput = document.getElementById('shareUrlInput');
+    shareUrlInput.select();
+    shareUrlInput.setSelectionRange(0, 99999); // For mobile devices
+    
+    // Copy the text inside the text field
+    navigator.clipboard.writeText(shareUrlInput.value)
+      .then(() => {
+        showSuccess("Link copied to clipboard!");
+      })
+      .catch(err => {
+        showError("Failed to copy link");
+        console.error('Could not copy text: ', err);
+      });
+  });
+}
+
+// Function to load auction details for a specific auction ID
+async function loadAuctionDetails(auctionId) {
+  if (!auctionId) {
+    console.error("No auction ID provided");
+    document.getElementById('loading-auction').style.display = 'none';
+    document.getElementById('no-auction-message').style.display = 'block';
+    return;
+  }
+  
+  try {
+    console.log(`Loading details for auction #${auctionId}`);
+    
+    if (!ethers || !contractInstance) {
+      await initializeContracts();
+    }
+    
+    // Get the auction data from the contract
+    const auction = await contractInstance.getAuction(auctionId);
+    console.log(`Raw auction data for #${auctionId}:`, auction);
+    
+    // Process auction data with safety checks
+    const nftContract = auction.nftContract || ethers.constants.AddressZero;
+    const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+    const seller = auction.seller || ethers.constants.AddressZero;
+    const highestBidder = auction.highestBidder || ethers.constants.AddressZero;
+    const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+    const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+    
+    // Handle endTime correctly
+    let endTime;
+    try {
+      endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+      console.log(`Converted endTime: ${endTime}`);
+    } catch (err) {
+      console.error("Error converting endTime:", err);
+      endTime = 0;
+    }
+    
+    // Handle boolean values
+    const isActive = auction.active === true || auction.active === 1;
+    const isFinalized = auction.finalized === true || auction.finalized === 1;
+    
+    const now = Math.floor(Date.now() / 1000);
+    const timeRemaining = endTime - now;
+    
+    // Calculate auction status properties
+    const endingSoon = isActive && timeRemaining < 900 && timeRemaining > 0;
+    const reserveMet = highestBid.gte(reservePrice);
+    const isEnded = !isActive || timeRemaining <= 0;
+    const hasWinner = auction.highestBidder !== ethers.constants.AddressZero && 
+                      highestBid.gt(0) && 
+                      highestBid.gte(reservePrice);
+    
+    const isOwner = currentAccount && seller.toLowerCase() === currentAccount.toLowerCase();
+    const isHighestBidder = currentAccount && highestBidder.toLowerCase() === currentAccount.toLowerCase();
+    
+    // Determine NFT metadata
+    let imageUrl = 'https://placehold.co/600x600?text=NFT+Image';
+    let nftName = `NFT #${tokenId}`;
+    
+    // Try to fetch NFT image from Alchemy if possible
+    if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
+      try {
+        console.log(`Getting metadata for NFT at contract ${nftContract}, token ID ${tokenId}`);
+        
+        // Create a temporary NFT contract to get the tokenURI
+        const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
+        
+        try {
+          const tokenURI = await nftContractInstance.tokenURI(tokenId);
+          console.log(`Token URI obtained:`, tokenURI);
+          
+          if (tokenURI) {
+            // Try to fetch metadata
+            let metadata = null;
+            
+            if (tokenURI.startsWith('ipfs://')) {
+              // Extracting the CID (Content Identifier) correctly
+              const ipfsHash = tokenURI.replace('ipfs://', '');
+              // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+              let ipfsUrl;
+              if (ipfsHash.startsWith('ipfs/')) {
+                ipfsUrl = `https://ipfs.io/${ipfsHash}`;
+                console.log(`Token URI IPFS corrected to avoid duplication:`, ipfsUrl);
+              } else {
+                ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+                console.log(`Standard IPFS URI:`, ipfsUrl);
+              }
+              
+              try {
+                console.log(`Getting metadata from IPFS:`, ipfsUrl);
+                const response = await fetch(ipfsUrl);
+                metadata = await response.json();
+              } catch (error) {
+                console.warn("Error getting metadata from IPFS:", error);
+              }
+            } else if (tokenURI.startsWith('http')) {
+              try {
+                console.log(`Getting metadata from HTTP:`, tokenURI);
+                const response = await fetch(tokenURI);
+                metadata = await response.json();
+              } catch (error) {
+                console.warn("Error getting HTTP metadata:", error);
+              }
+            }
+            
+            if (metadata) {
+              console.log("Metadata obtained:", metadata);
+              
+              if (metadata.name) {
+                nftName = metadata.name;
+              }
+              
+              if (metadata.image) {
+                if (metadata.image.startsWith('ipfs://')) {
+                  // Extracting the CID (Content Identifier) correctly
+                  const imageHash = metadata.image.replace('ipfs://', '');
+                  // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+                  if (imageHash.startsWith('ipfs/')) {
+                    imageUrl = `https://ipfs.io/${imageHash}`;
+                    console.log(`IPFS URL corrected to avoid duplication:`, imageUrl);
+                  } else {
+                    imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                    console.log(`Standard IPFS URL:`, imageUrl);
+                  }
+                } else {
+                  imageUrl = metadata.image;
+                }
+                console.log(`Image URL:`, imageUrl);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`Error fetching tokenURI:`, err);
+        }
+      } catch (error) {
+        console.warn(`Error loading NFT image for auction #${auctionId}:`, error);
+      }
+    }
+    
+    // Update meta tags for social media sharing
+    const ogImageElement = document.getElementById('og-image');
+    if (ogImageElement) {
+      ogImageElement.setAttribute('content', imageUrl);
+    }
+    
+    // Update page title
+    document.title = `${nftName} - Adrian Auction`;
+    
+    // Create status badges
+    let statusBadges = '';
+    
+    if (isActive) {
+      if (endingSoon) {
+        statusBadges += '<span class="auction-status status-ending">🔥 Ending Soon</span>';
+      } else {
+        statusBadges += '<span class="auction-status status-live">🔄 Active</span>';
+      }
+      
+      if (reserveMet) {
+        statusBadges += '<span class="auction-status status-reserve-met">✅ Reserve Met</span>';
+      }
+      
+      if (isHighestBidder) {
+        statusBadges += '<span class="auction-status status-live">🏆 You are Winning</span>';
+      }
+    } else {
+      if (isFinalized) {
+        if (hasWinner) {
+          statusBadges += '<span class="auction-status">✅ Ended with Winner</span>';
+        } else {
+          statusBadges += '<span class="auction-status">❌ Ended without Winner</span>';
+        }
+      } else {
+        statusBadges += '<span class="auction-status">⏸️ Inactive</span>';
+      }
+    }
+    
+    if (isOwner) {
+      statusBadges += '<span class="auction-status">👑 Your Auction</span>';
+    }
+    
+    // Update the UI with auction details
+    document.getElementById('detail-title').textContent = nftName;
+    document.getElementById('detail-status-badges').innerHTML = statusBadges;
+    document.getElementById('detail-nft-image').src = imageUrl;
+    document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
+    document.getElementById('detail-contract').textContent = formatAddress(nftContract);
+    document.getElementById('detail-token-id').textContent = tokenId;
+    document.getElementById('detail-seller').textContent = formatAddress(seller);
+    document.getElementById('detail-reserve-price').textContent = `${ethers.utils.formatEther(reservePrice)} ADRIAN`;
+    document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? `${ethers.utils.formatEther(highestBid)} ADRIAN` : "No bids yet";
+    document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddress(highestBidder) : "No bidder yet";
+    
+    if (isActive && timeRemaining > 0) {
+      document.getElementById('detail-time-label').textContent = "Time Remaining";
+      document.getElementById('detail-time-value').textContent = formatTimeRemaining(endTime);
+      
+      // Update time remaining every second
+      const timeInterval = setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeRemaining = endTime - now;
+        
+        if (timeRemaining <= 0) {
+          clearInterval(timeInterval);
+          document.getElementById('detail-time-value').textContent = "Ended";
+          
+          // Reload the page to show updated status
+          setTimeout(() => {
+            loadAuctionDetails(auctionId);
+          }, 3000);
+        } else {
+          document.getElementById('detail-time-value').textContent = formatTimeRemaining(endTime);
+        }
+      }, 1000);
+    } else {
+      document.getElementById('detail-time-label').textContent = "Status";
+      
+      if (isActive) {
+        document.getElementById('detail-time-value').textContent = "Active (Waiting for finalization)";
+      } else if (isFinalized) {
+        document.getElementById('detail-time-value').textContent = "Finalized";
+      } else {
+        document.getElementById('detail-time-value').textContent = "Inactive";
+      }
+    }
+    
+    // Create action buttons
+    let actionButtons = '';
+    
+    if (isActive && !isFinalized) {
+      if (isOwner && endTime <= now) {
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
+      } else if (isOwner && highestBid.isZero()) {
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
+      } else if (!isOwner) {
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
+      }
+    } else if (isOwner && !isActive && isFinalized && 
+             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
+      // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
+      actionButtons = `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
+    }
+    
+    // Add back to all auctions button
+    actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
+    
+    document.getElementById('detail-action-container').innerHTML = actionButtons;
+    
+    // Setup share buttons
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this NFT auction: ${nftName} on Adrian Auction!`);
+    
+    document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+    document.getElementById('facebook-share').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+    document.getElementById('whatsapp-share').href = `https://wa.me/?text=${text}%20${url}`;
+    document.getElementById('telegram-share').href = `https://t.me/share/url?url=${url}&text=${text}`;
+    
+    // Show the auction details container
+    document.getElementById('loading-auction').style.display = 'none';
+    document.getElementById('auction-details-container').style.display = 'block';
+    
+  } catch (error) {
+    console.error(`Error loading auction #${auctionId}:`, error);
+    document.getElementById('loading-auction').style.display = 'none';
+    document.getElementById('no-auction-message').style.display = 'block';
+  }
+}
+
+// Debug function for auctions
+// Call with an auction ID from the console, e.g.: debugAuction(1);
+
+// Dispatch an event when auction.js is loaded
+document.addEventListener('DOMContentLoaded', function() {
+  window.dispatchEvent(new Event('auctionJsLoaded'));
+  console.log('auction.js loaded and initialized');
+});

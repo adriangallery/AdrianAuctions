@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta property="og:title" content="Adrian Auction - NFT Auction">
+  <meta property="og:description" content="View and bid on this NFT auction on Adrian Auction">
+  <meta property="og:image" content="" id="og-image">
+  <meta property="og:url" content="">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Adrian Auction - Auction Details</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script defer src="auction.js"></script>
+  <style>
+    :root {
+      --bg-color: #f0f0f0;
+      --primary-text: #333333;
+      --accent-purple: #8a2be2;
+      --accent-purple-hover: #7a1dd2;
+      --accent-blue: #4dabf7;
+      --card-bg: #ffffff;
+      --card-border: #e9ecef;
+      --card-selected-border: #8a2be2;
+      --screen-bg: #ffffff;
+      --navbar-height: 60px;
+      --error-bg: #f8d7da;
+      --error-border: #f5c6cb;
+      --error-text: #721c24;
+      --success-bg: #d4edda;
+      --success-border: #c3e6cb;
+      --success-text: #155724;
+    }
+    
+    body {
+      background-color: var(--bg-color);
+      color: var(--primary-text);
+      font-family: 'Share Tech Mono', monospace;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+      background: var(--screen-bg);
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    
+    header {
+      text-align: center;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+    
+    header h1 {
+      font-size: 2.2rem;
+      margin: 0;
+      color: var(--primary-text);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+    
+    header p {
+      margin-top: 0.5rem;
+      font-size: 1rem;
+      color: var(--primary-text);
+      opacity: 0.8;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .section-title {
+      font-size: 1.4rem;
+      margin-bottom: 1.5rem;
+      color: var(--primary-text);
+      font-weight: 600;
+      border-bottom: 2px solid var(--card-border);
+      padding-bottom: 0.5rem;
+    }
+    
+    .auction-detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    
+    @media (max-width: 768px) {
+      .auction-detail-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .nft-image-container {
+      width: 100%;
+      aspect-ratio: 1/1;
+      overflow: hidden;
+      border-radius: 8px;
+      background-color: #f0f0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .nft-image {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    
+    .auction-info h2 {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
+    
+    .auction-detail-item {
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+    
+    .auction-detail-item:last-child {
+      border-bottom: none;
+    }
+    
+    .detail-label {
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 0.25rem;
+    }
+    
+    .detail-value {
+      font-size: 1.1rem;
+    }
+    
+    .auction-status {
+      display: inline-block;
+      padding: 0.4rem 0.8rem;
+      border-radius: 9999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .status-live {
+      background-color: #d1fae5;
+      color: #065f46;
+    }
+    
+    .status-ending {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    
+    .status-reserve-met {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+    
+    .btn-connect {
+      background-color: var(--accent-purple);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    
+    .btn-connect:hover {
+      background-color: var(--accent-purple-hover);
+    }
+    
+    .btn-action {
+      background-color: var(--accent-purple);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-align: center;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .btn-action:hover {
+      background-color: var(--accent-purple-hover);
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #5a6268;
+    }
+    
+    .alert {
+      padding: 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 1rem;
+    }
+    
+    .alert-danger {
+      background-color: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+    }
+    
+    .alert-success {
+      background-color: var(--success-bg);
+      border: 1px solid var(--success-border);
+      color: var(--success-text);
+    }
+    
+    .loading-spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+      border-top: 4px solid var(--accent-purple);
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .share-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .share-button {
+      padding: 0.5rem;
+      border-radius: 0.25rem;
+      color: white;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      transition: all 0.2s ease;
+    }
+    
+    .share-button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+    }
+    
+    .share-twitter {
+      background-color: #1DA1F2;
+    }
+    
+    .share-facebook {
+      background-color: #3b5998;
+    }
+    
+    .share-whatsapp {
+      background-color: #25D366;
+    }
+    
+    .share-telegram {
+      background-color: #0088cc;
+    }
+    
+    .share-copy {
+      background-color: #6c757d;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--card-border);
+      color: #9ca3af;
+      font-size: 0.875rem;
+    }
+    
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      color: var(--accent-purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .back-button:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <h1>Adrian Auction DApp</h1>
+      <p>NFT Auction Details</p>
+    </header>
+    
+    <a href="index.html" class="back-button">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left me-1" viewBox="0 0 16 16">
+        <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+      </svg>
+      Back to All Auctions
+    </a>
+    
+    <!-- Connect Wallet Section -->
+    <div id="connect-section" class="text-center mb-4">
+      <button id="connectBtn" class="btn-connect">Connect Wallet</button>
+    </div>
+    
+    <!-- Account Info Section (hidden by default) -->
+    <div id="account-section" class="text-center mb-4" style="display: none;">
+      <p>Connected Wallet:</p>
+      <div id="walletAddress" class="account-display"></div>
+    </div>
+    
+    <!-- Alert Messages -->
+    <div id="errorAlert" class="alert alert-danger" style="display: none;"></div>
+    <div id="successAlert" class="alert alert-success" style="display: none;"></div>
+    
+    <!-- Loading indicator -->
+    <div id="loading-auction" class="text-center py-5">
+      <div class="loading-spinner"></div>
+      <p class="mt-3">Loading auction details...</p>
+    </div>
+    
+    <!-- No Auction Message -->
+    <div id="no-auction-message" class="text-center py-5 card" style="display: none;">
+      <h2>Auction Not Found</h2>
+      <p>The auction you're looking for doesn't exist or has been removed.</p>
+      <a href="index.html" class="btn-action mt-3">Browse All Auctions</a>
+    </div>
+    
+    <!-- Auction Details -->
+    <div id="auction-details-container" class="card" style="display: none;">
+      <div class="auction-detail-grid">
+        <div class="image-section">
+          <div class="nft-image-container">
+            <img id="detail-nft-image" src="https://placehold.co/600x600?text=NFT+Image" class="nft-image" alt="NFT Image">
+          </div>
+          
+          <div class="share-section mt-3">
+            <h4>Share This Auction</h4>
+            <div class="share-buttons">
+              <a href="#" class="share-button share-twitter" id="twitter-share" title="Share on Twitter">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-facebook" id="facebook-share" title="Share on Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
+                  <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-whatsapp" id="whatsapp-share" title="Share on WhatsApp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+                  <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-telegram" id="telegram-share" title="Share on Telegram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
+                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
+                </svg>
+              </a>
+              <button class="share-button share-copy" id="copy-link" title="Copy Link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+                  <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+                  <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="auction-info">
+          <h2 id="detail-title">NFT Title</h2>
+          <div id="detail-status-badges"></div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Auction ID</div>
+            <div class="detail-value" id="detail-auction-id">#0</div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">NFT Contract</div>
+            <div class="detail-value" id="detail-contract"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Token ID</div>
+            <div class="detail-value" id="detail-token-id"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Seller</div>
+            <div class="detail-value" id="detail-seller"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Reserve Price</div>
+            <div class="detail-value" id="detail-reserve-price"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Current Bid</div>
+            <div class="detail-value" id="detail-current-bid"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Highest Bidder</div>
+            <div class="detail-value" id="detail-highest-bidder"></div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label" id="detail-time-label">Time Remaining</div>
+            <div class="detail-value" id="detail-time-value"></div>
+          </div>
+          
+          <div id="detail-action-container" class="mt-4">
+            <!-- Buttons will be added dynamically here -->
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+      <p id="contractInfo"></p>
+      <p>© 2023 Adrian Auction - All rights reserved</p>
+    </div>
+  </div>
+  
+  <!-- Modal for Bidding -->
+  <div class="modal fade" id="bidModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Place Bid</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="bid-nft-display" class="mb-3">
+            <!-- NFT details populated dynamically -->
+          </div>
+          
+          <form id="bidForm">
+            <input type="hidden" id="bidAuctionId">
+            <div class="mb-3">
+              <label for="bidAmount" class="form-label">Bid Amount (ADRIAN)</label>
+              <input type="number" class="form-control" id="bidAmount" required>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>Minimum bid: <span id="minBid">0</span> ADRIAN</span>
+              <span>Reserve price: <span id="reservePriceDisplay">0</span> ADRIAN</span>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn-action" id="placeBidBtn">Place Bid</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@alch/alchemy-web3@1.4.7/dist/alchemyWeb3.min.js"></script>
+  
+  <script>
+    // This script is specific to the auction-details.html page
+    document.addEventListener('DOMContentLoaded', function() {
+      // Parse auction ID from URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const auctionId = urlParams.get('id');
+      
+      // Setup copy link button
+      document.getElementById('copy-link').addEventListener('click', function() {
+        const currentUrl = window.location.href;
+        navigator.clipboard.writeText(currentUrl).then(function() {
+          showSuccess("Link copied to clipboard!");
+        }, function() {
+          showError("Failed to copy link");
+        });
+      });
+      
+      // Setup share buttons
+      function updateShareLinks(title, auctionId) {
+        const url = encodeURIComponent(window.location.href);
+        const text = encodeURIComponent(`Check out this NFT auction: ${title} on Adrian Auction!`);
+        
+        document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        document.getElementById('facebook-share').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        document.getElementById('whatsapp-share').href = `https://wa.me/?text=${text}%20${url}`;
+        document.getElementById('telegram-share').href = `https://t.me/share/url?url=${url}&text=${text}`;
+      }
+      
+      // Load the auction if ID exists
+      if (auctionId) {
+        console.log(`Loading auction #${auctionId}`);
+        
+        // Event listener for when auction.js loads
+        window.addEventListener('auctionJsLoaded', function() {
+          // Start connection process
+          connectWallet().then(() => {
+            // Once connected, load the specific auction
+            loadAuctionDetails(auctionId);
+          });
+        });
+        
+        // Check if auction.js is already loaded (happens if this script runs after auction.js)
+        if (typeof connectWallet === 'function') {
+          connectWallet().then(() => {
+            loadAuctionDetails(auctionId);
+          });
+        }
+      } else {
+        // No auction ID provided
+        document.getElementById('loading-auction').style.display = 'none';
+        document.getElementById('no-auction-message').style.display = 'block';
+      }
+      
+      // Function to load auction details (will be implemented in auction.js)
+      window.loadAuctionDetails = async function(auctionId) {
+        // This function will be called from auction.js
+        // The implementation is in the auction.js file that we'll add next
+      };
+    });
+  </script>
+</body>
+</html> 

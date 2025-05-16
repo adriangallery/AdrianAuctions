@@ -12,7 +12,7 @@ const AUCTION_ABI = [
   // Read functions
   "function getActiveAuctionsCount() view returns (uint256)",
   "function getActiveAuctions(uint256,uint256) view returns (uint256[] memory)",
-  "function getManyAuctionDetails(uint256[]) view returns ((address,uint256,address,uint256,uint256,address,uint256,bool,bool)[] memory)",
+  "function getManyAuctionDetails(uint256[]) view returns ((address nftContract,uint256 tokenId,address seller,uint256 reservePrice,uint256 endTime,address highestBidder,uint256 highestBid,bool active,bool finalized)[] memory)",
   "function getUserAuctions(address) view returns (uint256[] memory)",
   "function getUserBids(address) view returns (uint256[] memory)",
   
@@ -804,8 +804,10 @@ function formatAddress(address) {
 }
 
 function formatTimeRemaining(endTime) {
-  const now = Math.floor(Date.now() / 1000);
+  const now = Math.floor(Date.now() / 1000); // Current time in seconds
   const secondsRemaining = endTime - now;
+  
+  console.log(`Time calculation: endTime=${endTime}, now=${now}, remaining=${secondsRemaining}`);
   
   if (secondsRemaining <= 0) return "Ended";
   
@@ -1048,50 +1050,51 @@ async function loadUserBids(userAddress) {
 
 // Render a single auction card
 async function renderAuction(auction, auctionId, container, isOwner = false, isHighestBidder = false) {
-  console.log(`Renderizando subasta #${auctionId}:`, auction);
+  console.log(`Raw auction data for #${auctionId}:`, auction);
   
-  // Debug the auction structure
-  console.log("Auction structure", {
-    nftContract: auction.nftContract,
-    tokenId: auction.tokenId?.toString(),
-    active: auction.active,
-    typeofActive: typeof auction.active,
-    endTime: auction.endTime?.toString(),
-    highestBid: auction.highestBid?.toString(),
-    reservePrice: auction.reservePrice?.toString(),
-    finalized: auction.finalized
-  });
+  // CRITICAL FIX - Extract and convert auction data safely
+  const nftContract = auction.nftContract || ethers.constants.AddressZero;
+  const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+  const seller = auction.seller || ethers.constants.AddressZero;
+  const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+  const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
   
-  const now = Math.floor(Date.now() / 1000);
-  const endTime = auction.endTime ? Number(auction.endTime.toString()) : 0;
-  const timeRemaining = endTime - now;
+  // CRITICAL FIX - Handle endTime correctly
+  let endTime;
+  try {
+    endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+    console.log(`Converted endTime: ${endTime}`);
+  } catch (err) {
+    console.error("Error converting endTime:", err);
+    endTime = 0;
+  }
   
-  // Ensure values are BigNumber objects
-  const highestBid = ethers.BigNumber.from(String(auction.highestBid || '0'));
-  const reservePrice = ethers.BigNumber.from(String(auction.reservePrice || '0'));
-  
-  // Explicitly convert boolean values from contract (they might be coming as 0/1)
+  // CRITICAL FIX - Handle boolean values
   const isActive = auction.active === true || auction.active === 1;
   const isFinalized = auction.finalized === true || auction.finalized === 1;
   
-  const endingSoon = isActive && timeRemaining < 900;
+  const now = Math.floor(Date.now() / 1000);
+  const timeRemaining = endTime - now;
+  
+  console.log(`Processed auction data:`, {
+    nftContract,
+    tokenId,
+    seller,
+    reservePrice: reservePrice.toString(),
+    highestBid: highestBid.toString(),
+    endTime,
+    timeRemaining,
+    isActive,
+    isFinalized
+  });
+  
+  // Calculate auction status properties
+  const endingSoon = isActive && timeRemaining < 900 && timeRemaining > 0;
   const reserveMet = highestBid.gte(reservePrice);
   const isEnded = !isActive || timeRemaining <= 0;
   const hasWinner = auction.highestBidder !== ethers.constants.AddressZero && 
-                   highestBid.gt(0) && 
-                   highestBid.gte(reservePrice);
-  
-  console.log(`Subasta #${auctionId} estado:`, {
-    isActive,
-    isFinalized,
-    timeRemaining,
-    endingSoon,
-    reserveMet,
-    isEnded,
-    hasWinner,
-    isOwner,
-    isHighestBidder
-  });
+                    highestBid.gt(0) && 
+                    highestBid.gte(reservePrice);
   
   // Create auction card
   const auctionCard = document.createElement('div');
@@ -1107,23 +1110,20 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   
   auctionCard.className = `auction-card ${cardClass}`;
   
-  // Convert tokenId to a usable format
-  const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
-  
   // Try to fetch NFT image from Alchemy if possible
   let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
   let nftName = `NFT #${tokenId}`;
   
   // Improved image loading
-  if (alchemyWeb3 && auction.nftContract) {
+  if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
     try {
-      console.log(`Obteniendo metadata para NFT en contrato ${auction.nftContract}, token ID ${tokenId}`);
+      console.log(`Obteniendo metadata para NFT en contrato ${nftContract}, token ID ${tokenId}`);
       
       // Create a temporary NFT contract to get the tokenURI
-      const nftContract = new ethers.Contract(auction.nftContract, ERC721_ABI, readOnlyProvider);
+      const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
       
       try {
-        const tokenURI = await nftContract.tokenURI(tokenId);
+        const tokenURI = await nftContractInstance.tokenURI(tokenId);
         console.log(`Token URI obtenido:`, tokenURI);
         
         if (tokenURI) {
@@ -1236,7 +1236,7 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     } else if (isOwner && highestBid.isZero()) {
       actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancelar Subasta</button>`;
     } else if (!isOwner) {
-      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${auction.nftContract}', ${tokenId})">Ofertar</button>`;
+      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Ofertar</button>`;
     }
   } else if (isOwner && !isActive && isFinalized && 
             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
@@ -1244,13 +1244,18 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Volver a Listar</button>`;
   }
   
-  // Calcular el tiempo restante o pasado
+  // CRITICAL FIX - Time display logic
   let timeDisplay = '';
-  if (isActive) {
+  if (isActive && endTime > now) {
     timeDisplay = `<p><strong>Tiempo Restante:</strong> ${formatTimeRemaining(endTime)}</p>`;
   } else {
-    const endedAgo = now - endTime;
-    timeDisplay = `<p><strong>Terminó:</strong> hace ${formatTimeAgo(endedAgo)}</p>`;
+    // Only show "ended X ago" if endTime is valid
+    if (endTime > 1000000) { // Sanity check - any timestamp before 1970 + ~11 days is suspicious
+      const endedAgo = now - endTime;
+      timeDisplay = `<p><strong>Terminó:</strong> hace ${formatTimeAgo(endedAgo)}</p>`;
+    } else {
+      timeDisplay = `<p><strong>Tiempo:</strong> No disponible</p>`;
+    }
   }
   
   // Populate auction card
@@ -1262,8 +1267,8 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
       <h3 class="auction-title">${nftName}</h3>
       <div class="mb-2">${statusBadges}</div>
       <p><strong>ID Subasta:</strong> #${auctionId}</p>
-      <p><strong>Contrato:</strong> ${formatAddress(auction.nftContract)}</p>
-      <p><strong>Vendedor:</strong> ${formatAddress(auction.seller)}</p>
+      <p><strong>Contrato:</strong> ${formatAddress(nftContract)}</p>
+      <p><strong>Vendedor:</strong> ${formatAddress(seller)}</p>
       <p><strong>Precio Reserva:</strong> ${formatEther(reservePrice)} ADRIAN</p>
       <p><strong>Oferta Más Alta:</strong> ${formatEther(highestBid)} ADRIAN</p>
       ${timeDisplay}
@@ -2428,4 +2433,43 @@ function showRelistModal(auctionId) {
   // Show modal
   const relistModal = new bootstrap.Modal(document.getElementById('relistModal'));
   relistModal.show();
-} 
+}
+
+// Debug function to inspect auction data structure directly
+async function debugAuction(auctionId) {
+  try {
+    console.log(`Debugging auction #${auctionId}`);
+    
+    // 1. Try to get auction details directly from the contract
+    const auctionIdArray = [ethers.BigNumber.from(auctionId)];
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIdArray);
+    
+    if (details && details.length > 0) {
+      const auction = details[0];
+      console.log("Raw auction from contract:", auction);
+      console.log("Properties:", {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString(),
+        seller: auction.seller,
+        reservePrice: auction.reservePrice?.toString(),
+        endTime: auction.endTime?.toString(),
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString(),
+        active: auction.active,
+        finalized: auction.finalized
+      });
+      
+      // Try to decode fields manually
+      if (Array.isArray(auction)) {
+        console.log("Auction is array-like, trying to decode manually");
+        console.log("Array elements:", auction.map((v, i) => `[${i}]: ${v?.toString()}`));
+      }
+    } else {
+      console.log("No auction details returned");
+    }
+  } catch (error) {
+    console.error("Error debugging auction:", error);
+  }
+}
+
+// Call with an auction ID from the console, e.g.: debugAuction(1);

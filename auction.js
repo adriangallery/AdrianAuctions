@@ -803,6 +803,15 @@ function formatAddress(address) {
   return `${address.slice(0,6)}...${address.slice(-4)}`;
 }
 
+// Function to format time ago
+function formatTimeAgo(seconds) {
+  if (seconds < 60) return `${seconds} seconds`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours`;
+  return `${Math.floor(seconds / 86400)} days`;
+}
+
+// Function to format time remaining
 function formatTimeRemaining(endTime) {
   const now = Math.floor(Date.now() / 1000); // Current time in seconds
   const secondsRemaining = endTime - now;
@@ -1199,32 +1208,32 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   
   if (isActive) {
     if (endingSoon) {
-      statusBadges += '<span class="auction-status status-ending">🔥 Finalizando Pronto</span>';
+      statusBadges += '<span class="auction-status status-ending">🔥 Ending Soon</span>';
     } else {
-      statusBadges += '<span class="auction-status status-live">🔄 Activa</span>';
+      statusBadges += '<span class="auction-status status-live">🔄 Active</span>';
     }
     
     if (reserveMet) {
-      statusBadges += '<span class="auction-status status-reserve-met">✅ Reserva Alcanzada</span>';
+      statusBadges += '<span class="auction-status status-reserve-met">✅ Reserve Met</span>';
     }
     
     if (isHighestBidder) {
-      statusBadges += '<span class="auction-status status-live">🏆 Eres el Ganador</span>';
+      statusBadges += '<span class="auction-status status-live">🏆 You are Winning</span>';
     }
   } else {
     if (isFinalized) {
       if (hasWinner) {
-        statusBadges += '<span class="auction-status">✅ Finalizada con Ganador</span>';
+        statusBadges += '<span class="auction-status">✅ Ended with Winner</span>';
       } else {
-        statusBadges += '<span class="auction-status">❌ Finalizada sin Ganador</span>';
+        statusBadges += '<span class="auction-status">❌ Ended without Winner</span>';
       }
     } else {
-      statusBadges += '<span class="auction-status">⏸️ Inactiva</span>';
+      statusBadges += '<span class="auction-status">⏸️ Inactive</span>';
     }
   }
   
   if (isOwner) {
-    statusBadges += '<span class="auction-status">👑 Tu Subasta</span>';
+    statusBadges += '<span class="auction-status">👑 Your Auction</span>';
   }
   
   // Create action buttons
@@ -1232,29 +1241,29 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   
   if (isActive && !isFinalized) {
     if (isOwner && endTime <= now) {
-      actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalizar Subasta</button>`;
+      actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
     } else if (isOwner && highestBid.isZero()) {
-      actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancelar Subasta</button>`;
+      actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
     } else if (!isOwner) {
-      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Ofertar</button>`;
+      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
     }
   } else if (isOwner && !isActive && isFinalized && 
             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
     // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
-    actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Volver a Listar</button>`;
+    actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Relist</button>`;
   }
   
   // CRITICAL FIX - Time display logic
   let timeDisplay = '';
   if (isActive && endTime > now) {
-    timeDisplay = `<p><strong>Tiempo Restante:</strong> ${formatTimeRemaining(endTime)}</p>`;
+    timeDisplay = `<p><strong>Time Remaining:</strong> ${formatTimeRemaining(endTime)}</p>`;
   } else {
     // Only show "ended X ago" if endTime is valid
     if (endTime > 1000000) { // Sanity check - any timestamp before 1970 + ~11 days is suspicious
       const endedAgo = now - endTime;
-      timeDisplay = `<p><strong>Terminó:</strong> hace ${formatTimeAgo(endedAgo)}</p>`;
+      timeDisplay = `<p><strong>Ended:</strong> ${formatTimeAgo(endedAgo)} ago</p>`;
     } else {
-      timeDisplay = `<p><strong>Tiempo:</strong> No disponible</p>`;
+      timeDisplay = `<p><strong>Time:</strong> Not available</p>`;
     }
   }
   
@@ -1266,11 +1275,11 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     <div class="auction-info">
       <h3 class="auction-title">${nftName}</h3>
       <div class="mb-2">${statusBadges}</div>
-      <p><strong>ID Subasta:</strong> #${auctionId}</p>
-      <p><strong>Contrato:</strong> ${formatAddress(nftContract)}</p>
-      <p><strong>Vendedor:</strong> ${formatAddress(seller)}</p>
-      <p><strong>Precio Reserva:</strong> ${formatEther(reservePrice)} ADRIAN</p>
-      <p><strong>Oferta Más Alta:</strong> ${formatEther(highestBid)} ADRIAN</p>
+      <p><strong>Auction ID:</strong> #${auctionId}</p>
+      <p><strong>Contract:</strong> ${formatAddress(nftContract)}</p>
+      <p><strong>Seller:</strong> ${formatAddress(seller)}</p>
+      <p><strong>Reserve Price:</strong> ${formatEther(reservePrice)} ADRIAN</p>
+      <p><strong>Highest Bid:</strong> ${formatEther(highestBid)} ADRIAN</p>
       ${timeDisplay}
       <div class="mt-3">
         ${actionButtons}
@@ -1279,14 +1288,6 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   `;
   
   container.appendChild(auctionCard);
-}
-
-// Función para formatear tiempo transcurrido
-function formatTimeAgo(seconds) {
-  if (seconds < 60) return `${seconds} segundos`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} minutos`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} horas`;
-  return `${Math.floor(seconds / 86400)} días`;
 }
 
 // Open bid modal
@@ -1422,159 +1423,159 @@ async function loadNFTForBidModal(nftContract, tokenId) {
   `;
 }
 
-// Se llamará cuando el usuario realice la acción de ofertar
+// Place bid function
 async function placeBid(auctionId, bidAmount) {
   if (!window.ethereum || !currentAccount) {
-    showError("Por favor, conecta tu wallet primero");
+    showError("Please connect your wallet first");
     return;
   }
   
-  // Validación del monto de oferta
+  // Validate bid amount
   if (parseFloat(bidAmount) <= 0) {
-    showError("El monto de la oferta debe ser mayor que 0");
+    showError("Bid amount must be greater than 0");
     return;
   }
   
-  console.log("=== INICIO DE PROCESO DE OFERTA ===");
-  console.log("Parámetros:", { auctionId, bidAmount });
+  console.log("=== STARTING BID PROCESS ===");
+  console.log("Parameters:", { auctionId, bidAmount });
   
   try {
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
-    // Verificar y aprobar tokens ADRIAN
-    console.log("Inicializando contrato de token ADRIAN:", ADRIAN_TOKEN_ADDRESS);
+    // Verify and approve ADRIAN tokens
+    console.log("Initializing ADRIAN token contract:", ADRIAN_TOKEN_ADDRESS);
     const tokenContract = new ethers.Contract(ADRIAN_TOKEN_ADDRESS, ERC20_ABI, signer);
     const bidInWei = ethers.utils.parseEther(bidAmount.toString());
-    console.log("Cantidad de oferta en wei:", bidInWei.toString());
+    console.log("Bid amount in wei:", bidInWei.toString());
     
-    // Comprobar allowance
-    console.log("Verificando allowance actual para el contrato de subastas");
+    // Check allowance
+    console.log("Checking current allowance for auction contract");
     const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-    console.log("Allowance actual:", allowance.toString());
+    console.log("Current allowance:", allowance.toString());
     
     if (allowance.lt(bidInWei)) {
-      console.log("Allowance insuficiente, solicitando aprobación...");
-      showSuccess("Aprobando tokens ADRIAN para ofertar...");
+      console.log("Insufficient allowance, requesting approval...");
+      showSuccess("Approving ADRIAN tokens for bidding...");
       
       const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-      console.log("Transacción de aprobación enviada:", approveTx.hash);
+      console.log("Approval transaction sent:", approveTx.hash);
       
-      showSuccess("Confirmando aprobación de tokens...");
+      showSuccess("Confirming token approval...");
       const approveReceipt = await approveTx.wait();
-      console.log("Recibo de aprobación:", approveReceipt);
+      console.log("Approval receipt:", approveReceipt);
       
       if (approveReceipt.status === 0) {
-        throw new Error("La transacción de aprobación falló");
+        throw new Error("Approval transaction failed");
       }
       
-      // Verificar la aprobación después de la transacción
+      // Verify approval after transaction
       const newAllowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-      console.log("Nuevo allowance después de la aprobación:", newAllowance.toString());
+      console.log("New allowance after approval:", newAllowance.toString());
       
       if (newAllowance.lt(bidInWei)) {
-        throw new Error("La aprobación se completó pero el allowance sigue siendo insuficiente");
+        throw new Error("Approval completed but allowance is still insufficient");
       }
       
-      showSuccess("Tokens ADRIAN aprobados correctamente");
+      showSuccess("ADRIAN tokens approved successfully");
     } else {
-      console.log("Allowance suficiente para la oferta");
+      console.log("Sufficient allowance for bid");
     }
     
-    // Realizar la oferta
-    console.log("Inicializando contrato de subastas para ofertar");
+    // Place the bid
+    console.log("Initializing auction contract for bidding");
     const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
-    showSuccess("Enviando oferta...");
-    console.log("Enviando transacción placeBid con parámetros:", {
+    showSuccess("Sending bid...");
+    console.log("Sending placeBid transaction with parameters:", {
       auctionId,
       bidInWei: bidInWei.toString()
     });
     
     const tx = await contract.placeBid(auctionId, bidInWei);
-    console.log("Transacción de oferta enviada:", tx.hash);
+    console.log("Bid transaction sent:", tx.hash);
     
-    // Esperar confirmación
-    showSuccess("Confirmando tu oferta...");
+    // Wait for confirmation
+    showSuccess("Confirming your bid...");
     const receipt = await tx.wait();
-    console.log("Recibo de la transacción de oferta:", receipt);
+    console.log("Bid transaction receipt:", receipt);
     
     if (receipt.status === 0) {
-      throw new Error("La transacción de oferta falló");
+      throw new Error("Bid transaction failed");
     }
     
-    // Buscar evento BidPlaced en los logs
+    // Look for BidPlaced event in logs
     const bidPlacedEvent = receipt.events?.find(e => e.event === 'BidPlaced');
-    console.log("Evento BidPlaced:", bidPlacedEvent);
+    console.log("BidPlaced event:", bidPlacedEvent);
     
     if (bidPlacedEvent && bidPlacedEvent.args) {
-      console.log("Argumentos del evento:", bidPlacedEvent.args);
-      showSuccess(`¡Oferta por ${formatEther(bidPlacedEvent.args.amount)} ADRIAN realizada con éxito!`);
+      console.log("Event arguments:", bidPlacedEvent.args);
+      showSuccess(`Bid of ${formatEther(bidPlacedEvent.args.amount)} ADRIAN placed successfully!`);
     } else {
-      showSuccess("¡Oferta realizada con éxito!");
+      showSuccess("Bid placed successfully!");
     }
     
-    console.log("=== FIN DE PROCESO DE OFERTA EXITOSO ===");
+    console.log("=== BID PROCESS COMPLETED SUCCESSFULLY ===");
     
-    // Recargar las vistas
+    // Reload views
     loadActiveAuctions();
     
-    // Recargar la pestaña de ofertas si está activa
+    // Reload bids tab if active
     if (document.getElementById("mybids-tab").classList.contains("active")) {
       loadUserBids(currentAccount);
     }
     
   } catch (error) {
-    console.error("=== ERROR AL REALIZAR LA OFERTA ===");
-    console.error("Error detallado:", error);
+    console.error("=== ERROR PLACING BID ===");
+    console.error("Detailed error:", error);
     
-    // Información detallada del error para depuración
+    // Detailed error information for debugging
     if (error.data) {
       console.error("Error data:", error.data);
     }
     if (error.transaction) {
-      console.error("Detalles de la transacción:", error.transaction);
+      console.error("Transaction details:", error.transaction);
     }
     if (error.receipt) {
-      console.error("Recibo de la transacción:", error.receipt);
+      console.error("Transaction receipt:", error.receipt);
     }
     
-    // Proporcionar mensaje de error más específico
-    let errorMessage = "Error al realizar la oferta.";
+    // Provide more specific error message
+    let errorMessage = "Error placing bid.";
     
     if (error.code === 4001) {
-      errorMessage = "Transacción rechazada por el usuario.";
+      errorMessage = "Transaction rejected by user.";
     } else if (error.message.includes("insufficient funds")) {
-      errorMessage = "Fondos insuficientes para completar la transacción.";
+      errorMessage = "Insufficient funds to complete the transaction.";
     } else if (error.message.includes("execution reverted")) {
-      // Extraer el mensaje de error específico
+      // Extract specific error message
       const revertReason = error.data?.message || error.message;
       
-      // Interpretar errores comunes del contrato
+      // Interpret common contract errors
       if (revertReason.includes("auction ended")) {
-        errorMessage = "La subasta ya ha finalizado.";
+        errorMessage = "The auction has already ended.";
       } else if (revertReason.includes("not active")) {
-        errorMessage = "La subasta no está activa.";
+        errorMessage = "The auction is not active.";
       } else if (revertReason.includes("bid too low")) {
-        errorMessage = "La oferta es demasiado baja. Debe ser mayor que la oferta actual.";
+        errorMessage = "Bid is too low. It must be higher than the current bid.";
       } else if (revertReason.includes("finalized")) {
-        errorMessage = "La subasta ya ha sido finalizada.";
+        errorMessage = "The auction has already been finalized.";
       } else if (revertReason.includes("insufficient allowance")) {
-        errorMessage = "No hay suficiente allowance de tokens ADRIAN.";
+        errorMessage = "Insufficient ADRIAN token allowance.";
       } else if (revertReason.includes("insufficient balance")) {
-        errorMessage = "No tienes suficientes tokens ADRIAN.";
+        errorMessage = "You don't have enough ADRIAN tokens.";
       } else {
-        errorMessage = `La transacción falló: ${revertReason}`;
+        errorMessage = `Transaction failed: ${revertReason}`;
       }
     } else if (error.message.includes("transaction failed")) {
-      errorMessage = "La transacción falló. Revisa la consola para más detalles.";
+      errorMessage = "Transaction failed. Check console for more details.";
     } else if (error.message.includes("user rejected")) {
-      errorMessage = "Transacción rechazada por el usuario.";
+      errorMessage = "Transaction rejected by user.";
     } else if (error.message.includes("gas")) {
-      errorMessage = "Error con el gas de la transacción. Puede que el límite sea demasiado bajo.";
+      errorMessage = "Gas error. The limit may be too low.";
     }
     
-    console.error("Mensaje de error mostrado al usuario:", errorMessage);
+    console.error("Error message shown to user:", errorMessage);
     showError(errorMessage);
   }
 }

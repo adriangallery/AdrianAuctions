@@ -1820,6 +1820,8 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         console.log("NFT already deposited?", isDeposited);
       } catch (error) {
         console.warn("Error checking deposit status:", error);
+        // If we can't check, assume it's not deposited to ensure the process continues
+        isDeposited = false;
       }
       
       // 3. DEPOSIT NFT TO CONTRACT (STEP 1/2)
@@ -1827,30 +1829,40 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         showSuccess("Step 1/2: Depositing NFT...");
         console.log("NFT not deposited yet, proceeding with deposit");
         
-        // Call depositNFT function
-        const depositTx = await auctionContract.depositNFT(nftContract, tokenIdBN, {
-          gasLimit: 300000
-        });
-        
-        console.log("Deposit transaction sent:", depositTx.hash);
-        showSuccess("Confirming deposit transaction...");
-        
-        // Wait for confirmation
-        const depositReceipt = await depositTx.wait();
-        console.log("Deposit receipt:", depositReceipt);
-        
-        if (depositReceipt.status === 0) {
-          throw new Error("NFT deposit failed on the blockchain");
+        // TRANSACTION #1: depositNFT
+        try {
+          // Call depositNFT function with exact parameters required
+          const depositTx = await auctionContract.depositNFT(
+            nftContract,  // _nftContract: address
+            tokenIdBN,    // _tokenId: uint256
+            {
+              gasLimit: 300000
+            }
+          );
+          
+          console.log("Deposit transaction sent:", depositTx.hash);
+          showSuccess("Confirming deposit transaction...");
+          
+          // Wait for confirmation
+          const depositReceipt = await depositTx.wait();
+          console.log("Deposit receipt:", depositReceipt);
+          
+          if (depositReceipt.status === 0) {
+            throw new Error("NFT deposit failed on the blockchain");
+          }
+          
+          // Verify success through NFTDeposited event
+          const depositEvent = depositReceipt.events?.find(e => e.event === 'NFTDeposited');
+          if (!depositEvent) {
+            throw new Error("Deposit transaction completed but no NFTDeposited event found");
+          }
+          
+          console.log("NFT deposited successfully:", depositEvent);
+          showSuccess("NFT deposited successfully!");
+        } catch (error) {
+          console.error("Error in deposit transaction:", error);
+          throw new Error("Failed to deposit NFT: " + (error.message || "Unknown error"));
         }
-        
-        // Verify success through NFTDeposited event
-        const depositEvent = depositReceipt.events?.find(e => e.event === 'NFTDeposited');
-        if (!depositEvent) {
-          throw new Error("Deposit transaction completed but no NFTDeposited event found");
-        }
-        
-        console.log("NFT deposited successfully:", depositEvent);
-        showSuccess("NFT deposited successfully!");
       } else {
         console.log("NFT already deposited by current user, proceeding to auction creation");
       }
@@ -1858,34 +1870,42 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       // 4. CREATE AUCTION FROM DEPOSIT (STEP 2/2)
       showSuccess("Step 2/2: Creating auction...");
       
-      // Call createAuctionFromDeposit function
-      const tx = await auctionContract.createAuctionFromDeposit(
-        nftContract,
-        tokenIdBN,
-        reservePriceWei,
-        durationSecs,
-        { gasLimit: 500000 }
-      );
-      
-      console.log("Transaction sent:", tx.hash);
-      showSuccess("Confirming auction creation...");
-      
-      // Wait for confirmation
-      const receipt = await tx.wait();
-      
-      if (receipt.status === 0) {
-        throw new Error("Auction creation failed on the blockchain");
-      }
-      
-      // 5. FINALIZATION - Verify success through AuctionCreated event
-      const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
-      
-      if (auctionCreatedEvent && auctionCreatedEvent.args) {
-        const auctionId = auctionCreatedEvent.args.auctionId.toString();
-        console.log("New auction ID:", auctionId);
-        showSuccess(`Auction #${auctionId} created successfully!`);
-      } else {
-        showSuccess("Auction created successfully!");
+      try {
+        // TRANSACTION #2: createAuctionFromDeposit
+        // Call createAuctionFromDeposit function with exact parameters required
+        const tx = await auctionContract.createAuctionFromDeposit(
+          nftContract,     // _nftContract: address
+          tokenIdBN,       // _tokenId: uint256
+          reservePriceWei, // _reservePrice: uint256
+          durationSecs,    // _durationSecs: uint256
+          { 
+            gasLimit: 500000 
+          }
+        );
+        
+        console.log("Auction creation transaction sent:", tx.hash);
+        showSuccess("Confirming auction creation...");
+        
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        
+        if (receipt.status === 0) {
+          throw new Error("Auction creation failed on the blockchain");
+        }
+        
+        // 5. FINALIZATION - Verify success through AuctionCreated event
+        const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
+        
+        if (auctionCreatedEvent && auctionCreatedEvent.args) {
+          const auctionId = auctionCreatedEvent.args.auctionId.toString();
+          console.log("New auction ID:", auctionId);
+          showSuccess(`Auction #${auctionId} created successfully!`);
+        } else {
+          showSuccess("Auction created successfully!");
+        }
+      } catch (error) {
+        console.error("Error in auction creation transaction:", error);
+        throw new Error("Failed to create auction: " + (error.message || "Unknown error"));
       }
       
       // Update UI - Hide deposit status

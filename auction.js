@@ -186,16 +186,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Check if wallet is already connected
   checkConnection();
   
-  // Verificar depósitos al cargar NFTs
+  // Check for deposited NFTs when loading the Create tab
   document.getElementById("create-tab").addEventListener("click", async () => {
     if (currentAccount && auctionContract) {
-      // Al cambiar a la pestaña de creación, verificar si hay NFTs depositados
+      // When switching to create tab, check if there are deposited NFTs
       try {
         if (selectedNFT) {
           const tokenIdBN = ethers.BigNumber.from(String(selectedNFT.tokenId));
           const depositor = await auctionContract.getDepositInfo(selectedNFT.contract, tokenIdBN);
           
-          // Si el NFT seleccionado está depositado por el usuario actual
+          // If the selected NFT is deposited by the current user
           if (depositor.toLowerCase() === currentAccount.toLowerCase()) {
             document.getElementById("depositStatus").style.display = "block";
             document.getElementById("withdrawNFTBtn").onclick = () => {
@@ -208,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
           document.getElementById("depositStatus").style.display = "none";
         }
       } catch (error) {
-        console.warn("Error al verificar depósito:", error);
+        console.warn("Error checking deposit status:", error);
         document.getElementById("depositStatus").style.display = "none";
       }
     }
@@ -741,13 +741,13 @@ async function selectNFT(index) {
   // Show auction details
   auctionDetails.style.display = "block";
   
-  // Verificar si el NFT está depositado
+  // Verify if the NFT is deposited
   if (auctionContract) {
     try {
       const tokenIdBN = ethers.BigNumber.from(String(selectedNFT.tokenId));
       const depositor = await auctionContract.getDepositInfo(selectedNFT.contract, tokenIdBN);
       
-      // Si el NFT seleccionado está depositado por el usuario actual
+      // If the selected NFT is deposited by the current user
       if (depositor.toLowerCase() === currentAccount.toLowerCase()) {
         document.getElementById("depositStatus").style.display = "block";
         document.getElementById("withdrawNFTBtn").onclick = () => {
@@ -757,7 +757,7 @@ async function selectNFT(index) {
         document.getElementById("depositStatus").style.display = "none";
       }
     } catch (error) {
-      console.warn("Error al verificar depósito:", error);
+      console.warn("Error checking deposit status:", error);
       document.getElementById("depositStatus").style.display = "none";
     }
   }
@@ -1601,61 +1601,61 @@ async function cancelAuction(auctionId) {
   }
 }
 
-// Función para depositar un NFT en el contrato
+// Function to deposit an NFT to the contract
 async function depositNFT(nftContract, tokenId) {
   if (!window.ethereum || !currentAccount) {
-    showError("Por favor, conecta tu wallet primero");
+    showError("Please connect your wallet first");
     return false;
   }
   
-  console.log("=== INICIO DE DEPÓSITO DE NFT ===");
-  console.log("Parámetros:", { nftContract, tokenId });
+  console.log("=== STARTING NFT DEPOSIT ===");
+  console.log("Parameters:", { nftContract, tokenId });
   
   try {
-    // Convertir tokenId a BigNumber
+    // Convert tokenId to BigNumber
     const tokenIdBN = ethers.BigNumber.from(String(tokenId));
     
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
-    // Verificar propiedad
+    // Verify ownership
     const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
     const owner = await nftContractInstance.ownerOf(tokenIdBN);
     
     if (owner.toLowerCase() !== currentAccount.toLowerCase()) {
-      showError("No eres propietario de este NFT");
+      showError("You are not the owner of this NFT");
       return false;
     }
     
-    // Llamar a la función depositNFT
+    // Call depositNFT function
     const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
-    showSuccess("Depositando NFT...");
+    showSuccess("Depositing NFT...");
     
     const tx = await auctionContract.depositNFT(nftContract, tokenIdBN, {
       gasLimit: 300000
     });
     
-    console.log("Transacción de depósito enviada:", tx.hash);
-    showSuccess("Confirmando depósito...");
+    console.log("Deposit transaction sent:", tx.hash);
+    showSuccess("Confirming deposit...");
     
     const receipt = await tx.wait();
-    console.log("Recibo de depósito:", receipt);
+    console.log("Deposit receipt:", receipt);
     
     if (receipt.status === 0) {
-      throw new Error("El depósito falló en la blockchain");
+      throw new Error("Deposit failed on the blockchain");
     }
     
-    // Encontrar evento NFTDeposited
+    // Find NFTDeposited event
     const depositEvent = receipt.events?.find(e => e.event === 'NFTDeposited');
     if (depositEvent) {
-      console.log("NFT depositado correctamente:", depositEvent);
-      showSuccess("¡NFT depositado con éxito! Ahora puedes crear la subasta.");
+      console.log("NFT deposited successfully:", depositEvent);
+      showSuccess("NFT deposited successfully! You can now create the auction.");
       
-      // Actualizar la UI para mostrar que el NFT está depositado
+      // Update UI to show NFT is deposited
       document.getElementById("depositStatus").style.display = "block";
       
-      // Configurar el manejador de eventos para el botón de recuperación
+      // Set event handler for withdraw button
       document.getElementById("withdrawNFTBtn").onclick = () => {
         withdrawDepositedNFT(nftContract, tokenIdBN);
       };
@@ -1666,16 +1666,16 @@ async function depositNFT(nftContract, tokenId) {
     return false;
     
   } catch (error) {
-    console.error("Error al depositar NFT:", error);
+    console.error("Error depositing NFT:", error);
     
-    let errorMessage = "Error al depositar el NFT.";
+    let errorMessage = "Error depositing the NFT.";
     
     if (error.code === 4001) {
-      errorMessage = "Transacción rechazada por el usuario.";
+      errorMessage = "Transaction rejected by user.";
     } else if (error.message.includes("NFT already deposited")) {
-      errorMessage = "Este NFT ya está depositado en el contrato.";
+      errorMessage = "This NFT is already deposited in the contract.";
     } else if (error.message.includes("not owner")) {
-      errorMessage = "No eres propietario de este NFT.";
+      errorMessage = "You are not the owner of this NFT.";
     }
     
     showError(errorMessage);
@@ -1683,15 +1683,15 @@ async function depositNFT(nftContract, tokenId) {
   }
 }
 
-// Función para retirar un NFT depositado
+// Function to withdraw a deposited NFT
 async function withdrawDepositedNFT(nftContract, tokenId) {
   if (!window.ethereum || !currentAccount) {
-    showError("Por favor, conecta tu wallet primero");
+    showError("Please connect your wallet first");
     return;
   }
   
   try {
-    // Convertir tokenId a BigNumber si es necesario
+    // Convert tokenId to BigNumber if needed
     const tokenIdBN = ethers.BigNumber.from(String(tokenId));
     
     const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -1699,104 +1699,104 @@ async function withdrawDepositedNFT(nftContract, tokenId) {
     
     const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
-    showSuccess("Recuperando NFT depositado...");
+    showSuccess("Retrieving deposited NFT...");
     
     const tx = await auctionContract.withdrawDepositedNFT(nftContract, tokenIdBN, {
       gasLimit: 250000
     });
     
-    showSuccess("Confirmando la recuperación...");
+    showSuccess("Confirming withdrawal...");
     const receipt = await tx.wait();
     
     if (receipt.status === 0) {
-      throw new Error("La recuperación falló en la blockchain");
+      throw new Error("Withdrawal failed on the blockchain");
     }
     
-    showSuccess("¡NFT recuperado con éxito a tu wallet!");
+    showSuccess("NFT successfully withdrawn to your wallet!");
     
-    // Actualizar UI
+    // Update UI
     document.getElementById("depositStatus").style.display = "none";
     
   } catch (error) {
-    console.error("Error al recuperar NFT:", error);
+    console.error("Error withdrawing NFT:", error);
     
-    let errorMessage = "Error al recuperar el NFT.";
+    let errorMessage = "Error withdrawing the NFT.";
     
     if (error.code === 4001) {
-      errorMessage = "Transacción rechazada por el usuario.";
+      errorMessage = "Transaction rejected by user.";
     } else if (error.message.includes("Not the depositor")) {
-      errorMessage = "No eres quien depositó este NFT.";
+      errorMessage = "You are not the depositor of this NFT.";
     } else if (error.message.includes("NFT not found")) {
-      errorMessage = "El NFT no está depositado en el contrato.";
+      errorMessage = "The NFT is not deposited in the contract.";
     }
     
     showError(errorMessage);
   }
 }
 
-// Función para crear una nueva subasta - CON SISTEMA SIMPLIFICADO
+// Function to create a new auction - WITH SIMPLIFIED FLOW
 async function createNewAuction(nftContract, tokenId, reservePrice, durationHours) {
   if (!window.ethereum || !currentAccount) {
-    showError("Por favor, conecta tu wallet primero");
+    showError("Please connect your wallet first");
     return;
   }
   
-  console.log("=== INICIO DE CREACIÓN DE SUBASTA ===");
-  console.log("Parámetros recibidos:", { nftContract, tokenId, reservePrice, durationHours });
+  console.log("=== STARTING AUCTION CREATION ===");
+  console.log("Received parameters:", { nftContract, tokenId, reservePrice, durationHours });
   
-  // Verificar si se debe usar el flujo simplificado
+  // Check if simplified flow should be used
   const useSimplifiedFlow = document.getElementById("useSimplifiedFlow")?.checked || false;
-  console.log("¿Usar flujo simplificado?", useSimplifiedFlow);
+  console.log("Using simplified flow?", useSimplifiedFlow);
   
-  // 1. VALIDACIÓN Y CORRECCIÓN DE PARÁMETROS (igual para ambos flujos)
-  // Validar nftContract es una dirección válida
+  // 1. INITIAL VERIFICATION - PARAMETER VALIDATION AND CONVERSION
+  // Validate nftContract is a valid address
   if (!ethers.utils.isAddress(nftContract)) {
-    showError("Dirección de contrato NFT inválida");
+    showError("Invalid NFT contract address");
     return;
   }
 
-  // Convertir tokenId a BigNumber
+  // Convert tokenId to BigNumber
   let tokenIdBN;
   try {
     tokenIdBN = ethers.BigNumber.from(String(tokenId));
-    console.log("TokenID como BigNumber:", tokenIdBN.toString());
+    console.log("TokenID as BigNumber:", tokenIdBN.toString());
   } catch (err) {
-    console.error("Error al convertir tokenId a BigNumber:", err);
-    showError("ID de token inválido: " + err.message);
+    console.error("Error converting tokenId to BigNumber:", err);
+    showError("Invalid token ID: " + err.message);
     return;
   }
 
-  // Formatear precio de reserva
+  // Format reserve price
   let formattedReservePrice;
   try {
     const floatPrice = parseFloat(reservePrice);
     if (isNaN(floatPrice) || floatPrice <= 0) {
-      showError("El precio debe ser un número positivo");
+      showError("Price must be a positive number");
       return;
     }
     formattedReservePrice = floatPrice.toFixed(6);
-    console.log("Precio formateado:", formattedReservePrice);
+    console.log("Formatted price:", formattedReservePrice);
   } catch (err) {
-    showError("Formato de precio inválido: " + err.message);
+    showError("Invalid price format: " + err.message);
     return;
   }
 
-  // Convertir precio a wei
+  // Convert price to wei
   const reservePriceWei = ethers.utils.parseEther(formattedReservePrice);
-  console.log("Precio de reserva en tokens ADRIAN (wei):", reservePriceWei.toString());
+  console.log("Reserve price in ADRIAN tokens (wei):", reservePriceWei.toString());
 
-  // Validar duración
+  // Validate duration
   let durationSecs;
   try {
     const hoursNum = parseFloat(durationHours);
     if (isNaN(hoursNum) || hoursNum < 1) {
-      showError("La duración debe ser al menos 1 hora");
+      showError("Duration must be at least 1 hour");
       return;
     }
     durationSecs = Math.floor(hoursNum * 3600);
-    console.log("Duración en segundos:", durationSecs);
+    console.log("Duration in seconds:", durationSecs);
   } catch (err) {
-    showError("Duración inválida: " + err.message);
+    showError("Invalid duration: " + err.message);
     return;
   }
   
@@ -1804,37 +1804,61 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
     
-    console.log("Provider y signer inicializados correctamente");
+    console.log("Provider and signer initialized correctly");
     
-    // 2. EJECUTAR EL FLUJO CORRECTO SEGÚN LA SELECCIÓN
+    // 2. EXECUTE THE CORRECT FLOW BASED ON SELECTION
     if (useSimplifiedFlow) {
-      // FLUJO SIMPLIFICADO: PRIMERO DEPÓSITO, LUEGO CREATEAUCTIONFROMDEPOSIT
+      // SIMPLIFIED FLOW: FIRST DEPOSIT, THEN CREATEAUCTIONFROMDEPOSIT
       
-      // Verificar si el NFT ya está depositado
+      // 2. CHECK IF NFT IS ALREADY DEPOSITED
       const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
       let isDeposited = false;
       
       try {
         const depositor = await auctionContract.getDepositInfo(nftContract, tokenIdBN);
         isDeposited = (depositor.toLowerCase() === currentAccount.toLowerCase());
-        console.log("¿NFT ya depositado?", isDeposited);
+        console.log("NFT already deposited?", isDeposited);
       } catch (error) {
-        console.warn("Error al verificar depósito:", error);
+        console.warn("Error checking deposit status:", error);
       }
       
-      // Si no está depositado, primero depositarlo
+      // 3. DEPOSIT NFT TO CONTRACT (STEP 1/2)
       if (!isDeposited) {
-        showSuccess("Paso 1/2: Depositando NFT...");
-        const depositSuccess = await depositNFT(nftContract, tokenIdBN);
+        showSuccess("Step 1/2: Depositing NFT...");
+        console.log("NFT not deposited yet, proceeding with deposit");
         
-        if (!depositSuccess) {
-          throw new Error("El depósito del NFT falló.");
+        // Call depositNFT function
+        const depositTx = await auctionContract.depositNFT(nftContract, tokenIdBN, {
+          gasLimit: 300000
+        });
+        
+        console.log("Deposit transaction sent:", depositTx.hash);
+        showSuccess("Confirming deposit transaction...");
+        
+        // Wait for confirmation
+        const depositReceipt = await depositTx.wait();
+        console.log("Deposit receipt:", depositReceipt);
+        
+        if (depositReceipt.status === 0) {
+          throw new Error("NFT deposit failed on the blockchain");
         }
+        
+        // Verify success through NFTDeposited event
+        const depositEvent = depositReceipt.events?.find(e => e.event === 'NFTDeposited');
+        if (!depositEvent) {
+          throw new Error("Deposit transaction completed but no NFTDeposited event found");
+        }
+        
+        console.log("NFT deposited successfully:", depositEvent);
+        showSuccess("NFT deposited successfully!");
+      } else {
+        console.log("NFT already deposited by current user, proceeding to auction creation");
       }
       
-      // Crear la subasta desde el depósito
-      showSuccess("Paso 2/2: Creando subasta...");
+      // 4. CREATE AUCTION FROM DEPOSIT (STEP 2/2)
+      showSuccess("Step 2/2: Creating auction...");
       
+      // Call createAuctionFromDeposit function
       const tx = await auctionContract.createAuctionFromDeposit(
         nftContract,
         tokenIdBN,
@@ -1843,108 +1867,109 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         { gasLimit: 500000 }
       );
       
-      console.log("Transacción enviada:", tx.hash);
-      showSuccess("Confirmando creación de subasta...");
+      console.log("Transaction sent:", tx.hash);
+      showSuccess("Confirming auction creation...");
       
+      // Wait for confirmation
       const receipt = await tx.wait();
       
       if (receipt.status === 0) {
-        throw new Error("La creación de subasta falló en la blockchain");
+        throw new Error("Auction creation failed on the blockchain");
       }
       
-      // Encontrar evento AuctionCreated
+      // 5. FINALIZATION - Verify success through AuctionCreated event
       const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
       
       if (auctionCreatedEvent && auctionCreatedEvent.args) {
         const auctionId = auctionCreatedEvent.args.auctionId.toString();
-        console.log("ID de la nueva subasta:", auctionId);
-        showSuccess(`¡Subasta #${auctionId} creada con éxito!`);
+        console.log("New auction ID:", auctionId);
+        showSuccess(`Auction #${auctionId} created successfully!`);
       } else {
-        showSuccess("¡Subasta creada con éxito!");
+        showSuccess("Auction created successfully!");
       }
       
-      // Actualizar UI
+      // Update UI - Hide deposit status
       document.getElementById("depositStatus").style.display = "none";
     } else {
-      // FLUJO TRADICIONAL (original)
-      console.log("Usando flujo tradicional con aprobaciones...");
+      // TRADITIONAL FLOW (original)
+      console.log("Using traditional flow with approvals...");
       
-      // 1. Crear instancia del contrato NFT y aprobar directamente
-      console.log("Creando instancia de contrato NFT:", nftContract);
+      // 1. Create NFT contract instance and approve directly
+      console.log("Creating NFT contract instance:", nftContract);
       const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
       
-      // 2. APROBAR EL TOKEN MEDIANTE setApprovalForAll
-      console.log("Solicitando aprobación mediante setApprovalForAll...");
-      showSuccess("Solicitando permiso para utilizar el NFT...");
+      // 2. APPROVE TOKEN USING setApprovalForAll
+      console.log("Requesting approval using setApprovalForAll...");
+      showSuccess("Requesting permission to use NFT...");
       
       try {
         const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
           gasLimit: 250000
         });
-        console.log("Transacción de aprobación enviada:", approveTx.hash);
+        console.log("Approval transaction sent:", approveTx.hash);
         
-        showSuccess("Confirmando aprobación...");
+        showSuccess("Confirming approval...");
         const approveReceipt = await approveTx.wait();
-        console.log("Aprobación confirmada:", approveReceipt);
+        console.log("Approval confirmed:", approveReceipt);
         
-        // Esperar para asegurar que la blockchain ha procesado la aprobación
-        console.log("Esperando 3 segundos para asegurar que la aprobación se ha procesado...");
+        // Wait to ensure blockchain has processed the approval
+        console.log("Waiting 3 seconds to ensure approval has been processed...");
         await new Promise(resolve => setTimeout(resolve, 3000));
         
       } catch (error) {
         if (error.code === 4001) {
-          throw new Error("Transacción de aprobación rechazada por el usuario");
+          throw new Error("Approval transaction rejected by user");
         }
-        console.warn("Error en aprobación global:", error);
+        console.warn("Error in global approval:", error);
       }
       
-      // 3. Verificar y aprobar tokens ADRIAN para el precio de reserva
-      console.log("Inicializando contrato de token ADRIAN:", ADRIAN_TOKEN_ADDRESS);
+      // 3. Verify and approve ADRIAN tokens for the reserve price
+      console.log("Initializing ADRIAN token contract:", ADRIAN_TOKEN_ADDRESS);
       const tokenContract = new ethers.Contract(ADRIAN_TOKEN_ADDRESS, ERC20_ABI, signer);
       
-      // Comprobar allowance
-      console.log("Verificando allowance actual de tokens ADRIAN para el contrato de subastas");
+      // Check allowance
+      console.log("Checking current ADRIAN token allowance for auction contract");
       const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-      console.log("Allowance actual de ADRIAN:", allowance.toString());
+      console.log("Current ADRIAN allowance:", allowance.toString());
       
       if (allowance.lt(reservePriceWei)) {
-        console.log("Allowance insuficiente de tokens ADRIAN, solicitando aprobación...");
-        showSuccess("Aprobando tokens ADRIAN para la subasta...");
+        console.log("Insufficient ADRIAN token allowance, requesting approval...");
+        showSuccess("Approving ADRIAN tokens for auction...");
         
         const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-        console.log("Transacción de aprobación de tokens ADRIAN enviada:", approveTx.hash);
+        console.log("ADRIAN token approval transaction sent:", approveTx.hash);
         
-        showSuccess("Confirmando aprobación de tokens ADRIAN...");
+        showSuccess("Confirming ADRIAN token approval...");
         const approveReceipt = await approveTx.wait();
-        console.log("Recibo de aprobación de tokens ADRIAN:", approveReceipt);
+        console.log("ADRIAN token approval receipt:", approveReceipt);
         
         if (approveReceipt.status === 0) {
-          throw new Error("La transacción de aprobación de tokens ADRIAN falló");
+          throw new Error("ADRIAN token approval transaction failed");
         }
         
-        // Verificar la aprobación después de la transacción
+        // Verify approval after transaction
         const newAllowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-        console.log("Nuevo allowance de tokens ADRIAN después de la aprobación:", newAllowance.toString());
+        console.log("New ADRIAN token allowance after approval:", newAllowance.toString());
         
         if (newAllowance.lt(reservePriceWei)) {
-          throw new Error("La aprobación de tokens ADRIAN se completó pero el allowance sigue siendo insuficiente");
+          throw new Error("ADRIAN token approval completed but allowance is still insufficient");
         }
         
-        showSuccess("Tokens ADRIAN aprobados correctamente");
+        showSuccess("ADRIAN tokens approved successfully");
       } else {
-        console.log("Allowance suficiente de tokens ADRIAN para la subasta");
+        console.log("Sufficient ADRIAN token allowance for auction");
       }
       
-      // 4. Crear la subasta con el método tradicional
-      console.log("Creando instancia del contrato de subastas:", CONTRACT_ADDRESS);
+      // 4. Create auction with traditional method
+      console.log("Creating auction contract instance:", CONTRACT_ADDRESS);
       const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
       
-      showSuccess("Enviando transacción para crear subasta...");
+      showSuccess("Sending transaction to create auction...");
       
-      // Configurar opciones de gas
+      // Configure gas options
       const gasLimit = 500000;
       
-      // Llamar al método createAuction
+      // Call createAuction method
       const tx = await auctionContract.createAuction(
         nftContract,
         tokenIdBN,
@@ -1953,61 +1978,61 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         { gasLimit }
       );
       
-      console.log("Transacción enviada:", tx.hash);
-      showSuccess(`Transacción enviada. Esperando confirmación...`);
+      console.log("Transaction sent:", tx.hash);
+      showSuccess(`Transaction sent. Waiting for confirmation...`);
       
       const receipt = await tx.wait();
       
       if (receipt.status === 0) {
-        throw new Error("La transacción falló en la blockchain");
+        throw new Error("Transaction failed on the blockchain");
       }
       
-      // Buscar el evento AuctionCreated en los logs
+      // Find AuctionCreated event in logs
       const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
       
       if (auctionCreatedEvent && auctionCreatedEvent.args) {
         const auctionId = auctionCreatedEvent.args.auctionId.toString();
-        console.log("ID de la nueva subasta:", auctionId);
-        showSuccess(`¡Subasta #${auctionId} creada con éxito!`);
+        console.log("New auction ID:", auctionId);
+        showSuccess(`Auction #${auctionId} created successfully!`);
       } else {
-        showSuccess("¡Subasta creada con éxito!");
+        showSuccess("Auction created successfully!");
       }
     }
     
-    // Limpiar formulario y actualizar UI
+    // Clean form and update UI
     document.getElementById("createAuctionForm").reset();
     document.getElementById("auction-details").style.display = "none";
     document.getElementById("depositStatus").style.display = "none";
     selectedNFT = null;
     renderNFTGrid(document.getElementById("nftList"));
     
-    console.log("=== FIN DE CREACIÓN DE SUBASTA EXITOSA ===");
+    console.log("=== AUCTION CREATION SUCCESSFUL ===");
     
-    // Navegar a la pestaña de mis subastas
+    // Navigate to My Auctions tab
     setTimeout(() => {
       document.getElementById("myauctions-tab").click();
     }, 1500);
     
   } catch (error) {
-    console.error("=== ERROR AL CREAR LA SUBASTA ===");
-    console.error("Error detallado:", error);
+    console.error("=== ERROR CREATING AUCTION ===");
+    console.error("Detailed error:", error);
     
     if (error.data) console.error("Error data:", error.data);
     
-    // Análisis detallado del error
-    let errorMessage = "Error al crear la subasta.";
+    // Detailed error analysis
+    let errorMessage = "Error creating auction.";
     
     if (error.code === 4001) {
-      errorMessage = "Transacción rechazada por el usuario.";
+      errorMessage = "Transaction rejected by user.";
     } else if (error.message.includes("Not the depositor")) {
-      errorMessage = "No eres quien depositó este NFT.";
+      errorMessage = "You are not the depositor of this NFT.";
     } else if (error.message.includes("NFT not in contract")) {
-      errorMessage = "El NFT no está en el contrato. Deposítalo primero.";
+      errorMessage = "NFT is not in the contract. Deposit it first.";
     } else {
       errorMessage = error.message || errorMessage;
     }
     
-    console.error("Mensaje de error mostrado:", errorMessage);
+    console.error("Error message displayed:", errorMessage);
     showError(errorMessage);
   }
 }

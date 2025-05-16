@@ -845,9 +845,13 @@ async function loadActiveAuctions() {
     
     const now = Math.floor(Date.now() / 1000);
     const filtered = details.filter((auction, index) => {
+      // Ensure values are BigNumber objects
+      const highestBid = ethers.BigNumber.from(String(auction.highestBid || '0'));
+      const reservePrice = ethers.BigNumber.from(String(auction.reservePrice || '0'));
+      
       const timeLeft = auction.endTime - now;
       if (filter === "active") return auction.active;
-      if (filter === "reserveMet") return auction.highestBid >= auction.reservePrice;
+      if (filter === "reserveMet") return highestBid.gte(reservePrice);
       if (filter === "endingSoon") return auction.active && timeLeft < 900;
       return true;
     });
@@ -963,10 +967,15 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   
   const now = Math.floor(Date.now() / 1000);
   const timeRemaining = auction.endTime - now;
+  
+  // Ensure values are BigNumber objects
+  const highestBid = ethers.BigNumber.from(String(auction.highestBid || '0'));
+  const reservePrice = ethers.BigNumber.from(String(auction.reservePrice || '0'));
+  
   const endingSoon = auction.active && timeRemaining < 900;
-  const reserveMet = auction.highestBid >= auction.reservePrice;
+  const reserveMet = highestBid.gte(reservePrice);
   const isEnded = !auction.active || timeRemaining <= 0;
-  const hasWinner = auction.highestBidder !== ethers.constants.AddressZero && auction.highestBid.gt(0) && auction.highestBid.gte(auction.reservePrice);
+  const hasWinner = auction.highestBidder !== ethers.constants.AddressZero && highestBid.gt(0) && highestBid.gte(reservePrice);
   
   console.log(`Subasta #${auctionId} estado:`, {
     timeRemaining,
@@ -1098,13 +1107,13 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   if (auction.active && !auction.finalized) {
     if (isOwner && auction.endTime <= now) {
       actionButtons = `<button class="btn-action w-100" onclick="finalizeAuction(${auctionId})">Finalizar Subasta</button>`;
-    } else if (isOwner && auction.highestBid.isZero()) {
+    } else if (isOwner && highestBid.isZero()) {
       actionButtons = `<button class="btn-action w-100" onclick="cancelAuction(${auctionId})">Cancelar Subasta</button>`;
     } else if (!isOwner) {
-      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${auction.highestBid}', '${auction.reservePrice}', '${auction.nftContract}', ${auction.tokenId})">Ofertar</button>`;
+      actionButtons = `<button class="btn-action w-100" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${auction.nftContract}', ${auction.tokenId})">Ofertar</button>`;
     }
   } else if (isOwner && !auction.active && auction.finalized && 
-            (auction.highestBidder === ethers.constants.AddressZero || auction.highestBid.lt(auction.reservePrice))) {
+            (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
     // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
     actionButtons = `<button class="btn-action w-100" onclick="showRelistModal(${auctionId})">Volver a Listar</button>`;
   }
@@ -1129,8 +1138,8 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
       <p><strong>ID Subasta:</strong> #${auctionId}</p>
       <p><strong>Contrato:</strong> ${formatAddress(auction.nftContract)}</p>
       <p><strong>Vendedor:</strong> ${formatAddress(auction.seller)}</p>
-      <p><strong>Precio Reserva:</strong> ${formatEther(auction.reservePrice)} ADRIAN</p>
-      <p><strong>Oferta Más Alta:</strong> ${formatEther(auction.highestBid)} ADRIAN</p>
+      <p><strong>Precio Reserva:</strong> ${formatEther(reservePrice)} ADRIAN</p>
+      <p><strong>Oferta Más Alta:</strong> ${formatEther(highestBid)} ADRIAN</p>
       ${timeDisplay}
       <div class="mt-3">
         ${actionButtons}
@@ -1154,8 +1163,8 @@ function openBidModal(auctionId, currentBid, reservePrice, nftContract, tokenId)
   document.getElementById("bidAuctionId").value = auctionId;
   
   // Calculate minimum bid
-  const currentBidValue = ethers.BigNumber.from(currentBid);
-  const reservePriceValue = ethers.BigNumber.from(reservePrice);
+  const currentBidValue = ethers.BigNumber.from(String(currentBid));
+  const reservePriceValue = ethers.BigNumber.from(String(reservePrice));
   
   let minBidAmount;
   if (currentBidValue.gt(0)) {

@@ -1458,8 +1458,9 @@ async function placeBid(auctionId, bidAmount) {
       console.log("Insufficient allowance, requesting approval...");
       showSuccess("Approving ADRIAN tokens for bidding...");
       
-      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-      console.log("Approval transaction sent:", approveTx.hash);
+      // Only approve the exact amount needed for the bid
+      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, bidInWei);
+      console.log("Approval transaction sent for exact bid amount:", approveTx.hash);
       
       showSuccess("Confirming token approval...");
       const approveReceipt = await approveTx.wait();
@@ -1477,7 +1478,7 @@ async function placeBid(auctionId, bidAmount) {
         throw new Error("Approval completed but allowance is still insufficient");
       }
       
-      showSuccess("ADRIAN tokens approved successfully");
+      showSuccess("ADRIAN tokens approved successfully for this bid");
     } else {
       console.log("Sufficient allowance for bid");
     }
@@ -2129,8 +2130,9 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         console.log("Insufficient ADRIAN token allowance, requesting approval...");
         showSuccess("Approving ADRIAN tokens for auction...");
         
-        const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, ethers.constants.MaxUint256);
-        console.log("ADRIAN token approval transaction sent:", approveTx.hash);
+        // Only approve the exact amount needed for the auction
+        const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, reservePriceWei);
+        console.log("ADRIAN token approval transaction sent for exact amount:", approveTx.hash);
         
         showSuccess("Confirming ADRIAN token approval...");
         const approveReceipt = await approveTx.wait();
@@ -2148,7 +2150,7 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
           throw new Error("ADRIAN token approval completed but allowance is still insufficient");
         }
         
-        showSuccess("ADRIAN tokens approved successfully");
+        showSuccess("ADRIAN tokens approved successfully for this auction");
       } else {
         console.log("Sufficient ADRIAN token allowance for auction");
       }

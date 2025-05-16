@@ -1627,10 +1627,27 @@ async function depositNFT(nftContract, tokenId) {
       return false;
     }
     
-    // Call depositNFT function
-    const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+    // *** ADD APPROVAL STEP BEFORE DEPOSIT ***
+    console.log("Requesting NFT approval...");
+    showSuccess("Step 1/2: Approving NFT...");
     
-    showSuccess("Depositing NFT...");
+    // You can use approve or setApprovalForAll
+    const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenIdBN, {
+      gasLimit: 200000
+    });
+    
+    console.log("Approval transaction sent:", approveTx.hash);
+    showSuccess("Confirming approval...");
+    
+    const approveReceipt = await approveTx.wait();
+    console.log("Approval confirmed:", approveReceipt);
+    
+    // Small pause to ensure the approval is registered
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Now deposit the NFT
+    showSuccess("Step 2/2: Depositing NFT...");
+    const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
     const tx = await auctionContract.depositNFT(nftContract, tokenIdBN, {
       gasLimit: 300000
@@ -1676,6 +1693,8 @@ async function depositNFT(nftContract, tokenId) {
       errorMessage = "This NFT is already deposited in the contract.";
     } else if (error.message.includes("not owner")) {
       errorMessage = "You are not the owner of this NFT.";
+    } else if (error.message.includes("ERC721: transfer")) {
+      errorMessage = "Transfer failed. Make sure the NFT is approved for the contract.";
     }
     
     showError(errorMessage);
@@ -1826,49 +1845,21 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       
       // 3. DEPOSIT NFT TO CONTRACT (STEP 1/2)
       if (!isDeposited) {
-        showSuccess("Step 1/2: Depositing NFT...");
+        showSuccess("Depositing NFT...");
         console.log("NFT not deposited yet, proceeding with deposit");
         
-        // TRANSACTION #1: depositNFT
-        try {
-          // Call depositNFT function with exact parameters required
-          const depositTx = await auctionContract.depositNFT(
-            nftContract,  // _nftContract: address
-            tokenIdBN,    // _tokenId: uint256
-            {
-              gasLimit: 300000
-            }
-          );
-          
-          console.log("Deposit transaction sent:", depositTx.hash);
-          showSuccess("Confirming deposit transaction...");
-          
-          // Wait for confirmation
-          const depositReceipt = await depositTx.wait();
-          console.log("Deposit receipt:", depositReceipt);
-          
-          if (depositReceipt.status === 0) {
-            throw new Error("NFT deposit failed on the blockchain");
-          }
-          
-          // Verify success through NFTDeposited event
-          const depositEvent = depositReceipt.events?.find(e => e.event === 'NFTDeposited');
-          if (!depositEvent) {
-            throw new Error("Deposit transaction completed but no NFTDeposited event found");
-          }
-          
-          console.log("NFT deposited successfully:", depositEvent);
-          showSuccess("NFT deposited successfully!");
-        } catch (error) {
-          console.error("Error in deposit transaction:", error);
-          throw new Error("Failed to deposit NFT: " + (error.message || "Unknown error"));
+        // Use the separate depositNFT function which includes approval
+        const depositSuccess = await depositNFT(nftContract, tokenIdBN);
+        
+        if (!depositSuccess) {
+          throw new Error("Failed to deposit NFT. Please make sure the NFT is approved for the contract.");
         }
       } else {
         console.log("NFT already deposited by current user, proceeding to auction creation");
       }
       
       // 4. CREATE AUCTION FROM DEPOSIT (STEP 2/2)
-      showSuccess("Step 2/2: Creating auction...");
+      showSuccess("Creating auction...");
       
       try {
         // TRANSACTION #2: createAuctionFromDeposit

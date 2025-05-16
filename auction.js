@@ -528,7 +528,13 @@ async function loadUserNFTs(userAddress, appendMode = false) {
           // Verificar y corregir URLs de IPFS
           if (mediaUrl && mediaUrl.startsWith('ipfs://')) {
             const originalUrl = mediaUrl;
-            mediaUrl = mediaUrl.replace('ipfs://', 'https://ipfs.io/ipfs/');
+            const ipfsHash = mediaUrl.replace('ipfs://', '');
+            // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+            if (ipfsHash.startsWith('ipfs/')) {
+              mediaUrl = `https://ipfs.io/${ipfsHash}`;
+            } else {
+              mediaUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+            }
             console.log(`URL IPFS convertida: ${originalUrl} -> ${mediaUrl}`);
           }
           
@@ -1065,8 +1071,17 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
           let metadata = null;
           
           if (tokenURI.startsWith('ipfs://')) {
+            // Extracting the CID (Content Identifier) correctly
             const ipfsHash = tokenURI.replace('ipfs://', '');
-            const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+            // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+            let ipfsUrl;
+            if (ipfsHash.startsWith('ipfs/')) {
+              ipfsUrl = `https://ipfs.io/${ipfsHash}`;
+              console.log(`Token URI IPFS corregido para evitar duplicación:`, ipfsUrl);
+            } else {
+              ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+              console.log(`Token URI IPFS estándar:`, ipfsUrl);
+            }
             
             try {
               console.log(`Obteniendo metadata desde IPFS:`, ipfsUrl);
@@ -1094,8 +1109,16 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
             
             if (metadata.image) {
               if (metadata.image.startsWith('ipfs://')) {
+                // Extracting the CID (Content Identifier) correctly
                 const imageHash = metadata.image.replace('ipfs://', '');
-                imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+                if (imageHash.startsWith('ipfs/')) {
+                  imageUrl = `https://ipfs.io/${imageHash}`;
+                  console.log(`URL IPFS corregida para evitar duplicación:`, imageUrl);
+                } else {
+                  imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                  console.log(`URL IPFS estándar:`, imageUrl);
+                }
               } else {
                 imageUrl = metadata.image;
               }
@@ -1260,8 +1283,17 @@ async function loadNFTForBidModal(nftContract, tokenId) {
           
           // Handle IPFS URIs
           if (tokenURI.startsWith('ipfs://')) {
+            // Extracting the CID (Content Identifier) correctly
             const ipfsHash = tokenURI.replace('ipfs://', '');
-            const ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+            // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+            let ipfsUrl;
+            if (ipfsHash.startsWith('ipfs/')) {
+              ipfsUrl = `https://ipfs.io/${ipfsHash}`;
+              console.log(`Token URI IPFS corregido para bid modal:`, ipfsUrl);
+            } else {
+              ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+              console.log(`Token URI IPFS estándar para bid modal:`, ipfsUrl);
+            }
             
             try {
               const response = await fetch(ipfsUrl);
@@ -1287,8 +1319,16 @@ async function loadNFTForBidModal(nftContract, tokenId) {
             
             if (metadata.image) {
               if (metadata.image.startsWith('ipfs://')) {
+                // Extracting the CID (Content Identifier) correctly
                 const imageHash = metadata.image.replace('ipfs://', '');
-                imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
+                if (imageHash.startsWith('ipfs/')) {
+                  imageUrl = `https://ipfs.io/${imageHash}`;
+                  console.log(`URL IPFS corregida para evitar duplicación:`, imageUrl);
+                } else {
+                  imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                  console.log(`URL IPFS estándar:`, imageUrl);
+                }
               } else {
                 imageUrl = metadata.image;
               }

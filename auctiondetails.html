@@ -3,12 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta property="og:title" content="Adrian Auction - NFT Auction">
-  <meta property="og:description" content="View and bid on this NFT auction on Adrian Auction">
+  <meta property="og:title" content="Adrian Auction - NFT Auction" id="og-title">
+  <meta property="og:description" content="View and bid on this NFT auction on Adrian Auction" id="og-description">
   <meta property="og:image" content="" id="og-image">
-  <meta property="og:url" content="">
+  <meta property="og:url" content="" id="og-url">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Adrian Auction - NFT Auction" id="twitter-title">
+  <meta name="twitter:description" content="Check out this NFT auction on Adrian Auction! $ADRIAN @adriancerda 🟦🟥" id="twitter-description">
+  <meta name="twitter:image" content="" id="twitter-image">
   <title>Adrian Auction - Auction Details</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -698,10 +701,29 @@
           
           // Actualizar info para compartir
           updateShareLinks(nftName, auctionId);
+          
+          // Actualizar metadatos para compartir en redes sociales
+          const currentUrl = window.location.href;
+          
+          // Actualizar metas OpenGraph
           const ogImageElement = document.getElementById('og-image');
-          if (ogImageElement) {
-            ogImageElement.setAttribute('content', imageUrl);
-          }
+          const ogTitleElement = document.getElementById('og-title');
+          const ogDescElement = document.getElementById('og-description');
+          const ogUrlElement = document.getElementById('og-url');
+          
+          if (ogImageElement) ogImageElement.setAttribute('content', imageUrl);
+          if (ogTitleElement) ogTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+          if (ogDescElement) ogDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEtherSimple(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
+          if (ogUrlElement) ogUrlElement.setAttribute('content', currentUrl);
+          
+          // Actualizar metas Twitter
+          const twitterImageElement = document.getElementById('twitter-image');
+          const twitterTitleElement = document.getElementById('twitter-title');
+          const twitterDescElement = document.getElementById('twitter-description');
+          
+          if (twitterImageElement) twitterImageElement.setAttribute('content', imageUrl);
+          if (twitterTitleElement) twitterTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+          if (twitterDescElement) twitterDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEtherSimple(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
           
           // Actualizar título de la página
           document.title = `${nftName} - Adrian Auction`;

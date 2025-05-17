@@ -2790,13 +2790,44 @@ async function loadAuctionDetails(auctionId) {
     }
     
     // Update meta tags for social media sharing
+    const currentUrl = window.location.href;
+    
+    // Actualizar metas OpenGraph
     const ogImageElement = document.getElementById('og-image');
-    if (ogImageElement) {
-      ogImageElement.setAttribute('content', imageUrl);
-    }
+    const ogTitleElement = document.getElementById('og-title');
+    const ogDescElement = document.getElementById('og-description');
+    const ogUrlElement = document.getElementById('og-url');
+    
+    if (ogImageElement) ogImageElement.setAttribute('content', imageUrl);
+    if (ogTitleElement) ogTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+    if (ogDescElement) ogDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
+    if (ogUrlElement) ogUrlElement.setAttribute('content', currentUrl);
+    
+    // Actualizar metas Twitter
+    const twitterImageElement = document.getElementById('twitter-image');
+    const twitterTitleElement = document.getElementById('twitter-title');
+    const twitterDescElement = document.getElementById('twitter-description');
+    
+    if (twitterImageElement) twitterImageElement.setAttribute('content', imageUrl);
+    if (twitterTitleElement) twitterTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+    if (twitterDescElement) twitterDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
     
     // Update page title
     document.title = `${nftName} - Adrian Auction`;
+    
+    // Setup share buttons
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this NFT auction: ${nftName} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
+    
+    const twitterShare = document.getElementById('twitter-share');
+    const facebookShare = document.getElementById('facebook-share');
+    const whatsappShare = document.getElementById('whatsapp-share');
+    const telegramShare = document.getElementById('telegram-share');
+    
+    if (twitterShare) twitterShare.href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+    if (facebookShare) facebookShare.href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+    if (whatsappShare) whatsappShare.href = `https://wa.me/?text=${text}%20${url}`;
+    if (telegramShare) telegramShare.href = `https://t.me/share/url?url=${url}&text=${text}`;
     
     // Create status badges
     let statusBadges = '';
@@ -2897,15 +2928,6 @@ async function loadAuctionDetails(auctionId) {
     actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
     
     document.getElementById('detail-action-container').innerHTML = actionButtons;
-    
-    // Setup share buttons
-    const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(`Check out this NFT auction: ${nftName} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
-    
-    document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
-    document.getElementById('facebook-share').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
-    document.getElementById('whatsapp-share').href = `https://wa.me/?text=${text}%20${url}`;
-    document.getElementById('telegram-share').href = `https://t.me/share/url?url=${url}&text=${text}`;
     
     // Show the auction details container
     document.getElementById('loading-auction').style.display = 'none';

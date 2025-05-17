@@ -2556,42 +2556,15 @@ function shareAuction(auctionId, nftName) {
   // Updated social share text with $ADRIAN, @adriancerda and emojis 🟦🟥
   const shareText = encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
   
-  // Intentar encontrar la imagen del NFT actual
-  let currentNftImage = '';
-  const auctionCards = document.querySelectorAll('.auction-card');
+  // Usar siempre la imagen fija proporcionada para compartir
+  const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
   
-  for (const card of auctionCards) {
-    const cardId = card.querySelector('[onclick*="' + auctionId + '"]');
-    if (cardId || card.innerHTML.includes(`Auction ID:</strong> #${auctionId}`)) {
-      const imgElement = card.querySelector('.nft-image');
-      if (imgElement && imgElement.src) {
-        currentNftImage = imgElement.src;
-        break;
-      }
-    }
-  }
+  // Actualizar metadatos para compartir
+  const ogImageElement = document.getElementById('og-image');
+  const twitterImageElement = document.getElementById('twitter-image');
   
-  // Asegurar que la URL sea absoluta
-  if (currentNftImage && !currentNftImage.startsWith('http') && !currentNftImage.startsWith('https')) {
-    currentNftImage = new URL(currentNftImage, baseUrl).href;
-  }
-  
-  // Si encontramos una imagen, actualizamos los metadatos
-  if (currentNftImage) {
-    const ogImageElement = document.getElementById('og-image');
-    const twitterImageElement = document.getElementById('twitter-image');
-    
-    if (ogImageElement) ogImageElement.setAttribute('content', currentNftImage);
-    if (twitterImageElement) twitterImageElement.setAttribute('content', currentNftImage);
-  } else {
-    // Si no se encontró una imagen, usar la imagen predeterminada
-    const defaultImage = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png';
-    const ogImageElement = document.getElementById('og-image');
-    const twitterImageElement = document.getElementById('twitter-image');
-    
-    if (ogImageElement) ogImageElement.setAttribute('content', defaultImage);
-    if (twitterImageElement) twitterImageElement.setAttribute('content', defaultImage);
-  }
+  if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
+  if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
   
   // Create modal for sharing
   const modalHTML = `
@@ -2829,16 +2802,8 @@ async function loadAuctionDetails(auctionId) {
     // Update meta tags for social media sharing
     const currentUrl = window.location.href;
     
-    // Asegurar que la URL de la imagen sea absoluta
-    let absoluteImageUrl = imageUrl;
-    if (!absoluteImageUrl || absoluteImageUrl === '' || absoluteImageUrl.includes('placeholder') || absoluteImageUrl === 'https://placehold.co/600x600?text=NFT+Image') {
-      // Usar la nueva imagen como alternativa confiable si no hay imagen
-      absoluteImageUrl = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png';
-    } else if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
-      // Si es una URL relativa, la convertimos a absoluta
-      const baseUrl = window.location.origin;
-      absoluteImageUrl = new URL(imageUrl, baseUrl).href;
-    }
+    // Usar siempre la imagen fija para compartir en redes sociales
+    const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
     
     // Actualizar metas OpenGraph
     const ogImageElement = document.getElementById('og-image');
@@ -2846,7 +2811,7 @@ async function loadAuctionDetails(auctionId) {
     const ogDescElement = document.getElementById('og-description');
     const ogUrlElement = document.getElementById('og-url');
     
-    if (ogImageElement) ogImageElement.setAttribute('content', absoluteImageUrl);
+    if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
     if (ogTitleElement) ogTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
     if (ogDescElement) ogDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
     if (ogUrlElement) ogUrlElement.setAttribute('content', currentUrl);
@@ -2857,7 +2822,7 @@ async function loadAuctionDetails(auctionId) {
     const twitterDescElement = document.getElementById('twitter-description');
     const twitterImageAltElement = document.getElementById('twitter-image-alt');
     
-    if (twitterImageElement) twitterImageElement.setAttribute('content', absoluteImageUrl);
+    if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
     if (twitterTitleElement) twitterTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
     if (twitterDescElement) twitterDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
     if (twitterImageAltElement) twitterImageAltElement.setAttribute('content', `NFT auction image of ${nftName}`);

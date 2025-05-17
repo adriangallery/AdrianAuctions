@@ -91,128 +91,170 @@ let hasMoreNfts = true;
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
   // Set up contract info
-  document.getElementById('contractInfo').textContent = 
-    `Contract: ${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(38)}`;
+  const contractInfoElement = document.getElementById('contractInfo');
+  if (contractInfoElement) {
+    contractInfoElement.textContent = 
+      `Contract: ${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(38)}`;
+  }
   
   // Connect button event listener
-  document.getElementById("connectBtn").addEventListener("click", connectWallet);
+  const connectBtn = document.getElementById("connectBtn");
+  if (connectBtn) {
+    connectBtn.addEventListener("click", connectWallet);
+  }
   
   // Tab change handlers
-  document.getElementById("myauctions-tab").addEventListener("click", () => {
-    if (currentAccount) {
-      loadUserAuctions(currentAccount);
-    }
-  });
+  const myAuctionsTab = document.getElementById("myauctions-tab");
+  if (myAuctionsTab) {
+    myAuctionsTab.addEventListener("click", () => {
+      if (currentAccount) {
+        loadUserAuctions(currentAccount);
+      }
+    });
+  }
   
-  document.getElementById("mybids-tab").addEventListener("click", () => {
-    if (currentAccount) {
-      loadUserBids(currentAccount);
-    }
-  });
+  const myBidsTab = document.getElementById("mybids-tab");
+  if (myBidsTab) {
+    myBidsTab.addEventListener("click", () => {
+      if (currentAccount) {
+        loadUserBids(currentAccount);
+      }
+    });
+  }
   
-  document.getElementById("create-tab").addEventListener("click", () => {
-    if (currentAccount) {
-      // Reiniciar estado de paginación cuando se cambia a la pestaña
-      nftPageKey = null;
-      ownedNFTs = [];
-      hasMoreNfts = true;
-      loadUserNFTs(currentAccount);
-    }
-  });
+  const createTab = document.getElementById("create-tab");
+  if (createTab) {
+    createTab.addEventListener("click", () => {
+      if (currentAccount) {
+        // Reiniciar estado de paginación cuando se cambia a la pestaña
+        nftPageKey = null;
+        ownedNFTs = [];
+        hasMoreNfts = true;
+        loadUserNFTs(currentAccount);
+      }
+    });
+  }
   
   // Botón Load More NFTs
-  document.getElementById("loadMoreNftsBtn")?.addEventListener("click", () => {
-    if (currentAccount && hasMoreNfts) {
-      loadUserNFTs(currentAccount, true); // true = append mode
-    }
-  });
+  const loadMoreNftsBtn = document.getElementById("loadMoreNftsBtn");
+  if (loadMoreNftsBtn) {
+    loadMoreNftsBtn.addEventListener("click", () => {
+      if (currentAccount && hasMoreNfts) {
+        loadUserNFTs(currentAccount, true); // true = append mode
+      }
+    });
+  }
   
   // Form handlers
-  document.getElementById("createAuctionForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (!currentAccount) {
-      showError("Por favor, conecta tu wallet primero");
-      return;
-    }
-    
-    if (!selectedNFT) {
-      showError("Por favor, selecciona un NFT primero");
-      return;
-    }
-    
-    const reservePrice = document.getElementById("reservePrice").value;
-    const duration = document.getElementById("duration").value;
-    
-    // Validación de los inputs
-    if (parseFloat(reservePrice) <= 0) {
-      showError("El precio de reserva debe ser mayor que 0");
-      return;
-    }
-    
-    if (parseInt(duration) < 1) {
-      showError("La duración debe ser de al menos 1 hora");
-      return;
-    }
-    
-    console.log("Iniciando creación de subasta con parámetros:", {
-      nftContract: selectedNFT.contract,
-      tokenId: selectedNFT.tokenId,
-      reservePrice: reservePrice,
-      duration: duration
+  const createAuctionForm = document.getElementById("createAuctionForm");
+  if (createAuctionForm) {
+    createAuctionForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!currentAccount) {
+        showError("Por favor, conecta tu wallet primero");
+        return;
+      }
+      
+      if (!selectedNFT) {
+        showError("Por favor, selecciona un NFT primero");
+        return;
+      }
+      
+      const reservePrice = document.getElementById("reservePrice").value;
+      const duration = document.getElementById("duration").value;
+      
+      // Validación de los inputs
+      if (parseFloat(reservePrice) <= 0) {
+        showError("El precio de reserva debe ser mayor que 0");
+        return;
+      }
+      
+      if (parseInt(duration) < 1) {
+        showError("La duración debe ser de al menos 1 hora");
+        return;
+      }
+      
+      console.log("Iniciando creación de subasta con parámetros:", {
+        nftContract: selectedNFT.contract,
+        tokenId: selectedNFT.tokenId,
+        reservePrice: reservePrice,
+        duration: duration
+      });
+      
+      createNewAuction(selectedNFT.contract, selectedNFT.tokenId, reservePrice, duration);
     });
-    
-    createNewAuction(selectedNFT.contract, selectedNFT.tokenId, reservePrice, duration);
-  });
+  }
   
   // Bid modal setup
-  document.getElementById("placeBidBtn").addEventListener("click", () => {
-    const auctionId = document.getElementById("bidAuctionId").value;
-    const bidAmount = document.getElementById("bidAmount").value;
-    
-    placeBid(auctionId, bidAmount);
-    const bidModal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
-    bidModal.hide();
-  });
+  const placeBidBtn = document.getElementById("placeBidBtn");
+  if (placeBidBtn) {
+    placeBidBtn.addEventListener("click", () => {
+      const auctionId = document.getElementById("bidAuctionId").value;
+      const bidAmount = document.getElementById("bidAmount").value;
+      
+      placeBid(auctionId, bidAmount);
+      const bidModal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
+      bidModal.hide();
+    });
+  }
   
   // Navigation buttons
-  document.getElementById("createFirstAuctionBtn")?.addEventListener("click", () => {
-    document.getElementById("create-tab").click();
-  });
+  const createFirstAuctionBtn = document.getElementById("createFirstAuctionBtn");
+  if (createFirstAuctionBtn) {
+    createFirstAuctionBtn.addEventListener("click", () => {
+      const createTab = document.getElementById("create-tab");
+      if (createTab) createTab.click();
+    });
+  }
   
-  document.getElementById("exploreToBidBtn")?.addEventListener("click", () => {
-    document.getElementById("explore-tab").click();
-  });
+  const exploreToBidBtn = document.getElementById("exploreToBidBtn");
+  if (exploreToBidBtn) {
+    exploreToBidBtn.addEventListener("click", () => {
+      const exploreTab = document.getElementById("explore-tab");
+      if (exploreTab) exploreTab.click();
+    });
+  }
   
   // Check if wallet is already connected
   checkConnection();
   
   // Check for deposited NFTs when loading the Create tab
-  document.getElementById("create-tab").addEventListener("click", async () => {
-    if (currentAccount && auctionContract) {
-      // When switching to create tab, check if there are deposited NFTs
-      try {
-        if (selectedNFT) {
-          const tokenIdBN = ethers.BigNumber.from(String(selectedNFT.tokenId));
-          const depositor = await auctionContract.getDepositInfo(selectedNFT.contract, tokenIdBN);
-          
-          // If the selected NFT is deposited by the current user
-          if (depositor.toLowerCase() === currentAccount.toLowerCase()) {
-            document.getElementById("depositStatus").style.display = "block";
-            document.getElementById("withdrawNFTBtn").onclick = () => {
-              withdrawDepositedNFT(selectedNFT.contract, tokenIdBN);
-            };
+  if (createTab) {
+    createTab.addEventListener("click", async () => {
+      if (currentAccount && auctionContract) {
+        // When switching to create tab, check if there are deposited NFTs
+        try {
+          if (selectedNFT) {
+            const tokenIdBN = ethers.BigNumber.from(String(selectedNFT.tokenId));
+            const depositor = await auctionContract.getDepositInfo(selectedNFT.contract, tokenIdBN);
+            
+            const depositStatus = document.getElementById("depositStatus");
+            if (!depositStatus) return;
+            
+            // If the selected NFT is deposited by the current user
+            if (depositor.toLowerCase() === currentAccount.toLowerCase()) {
+              depositStatus.style.display = "block";
+              const withdrawNFTBtn = document.getElementById("withdrawNFTBtn");
+              if (withdrawNFTBtn) {
+                withdrawNFTBtn.onclick = () => {
+                  withdrawDepositedNFT(selectedNFT.contract, tokenIdBN);
+                };
+              }
+            } else {
+              depositStatus.style.display = "none";
+            }
           } else {
-            document.getElementById("depositStatus").style.display = "none";
+            const depositStatus = document.getElementById("depositStatus");
+            if (depositStatus) depositStatus.style.display = "none";
           }
-        } else {
-          document.getElementById("depositStatus").style.display = "none";
+        } catch (error) {
+          console.warn("Error checking deposit status:", error);
+          const depositStatus = document.getElementById("depositStatus");
+          if (depositStatus) depositStatus.style.display = "none";
         }
-      } catch (error) {
-        console.warn("Error checking deposit status:", error);
-        document.getElementById("depositStatus").style.display = "none";
       }
-    }
-  });
+    });
+  }
 });
 
 // Initialize Alchemy Web3
@@ -293,10 +335,15 @@ async function connectWallet() {
     initAlchemyWeb3();
     
     // Update UI
-    document.getElementById("connect-section").style.display = "none";
-    document.getElementById("account-section").style.display = "block";
-    document.getElementById("app-content").style.display = "block";
-    document.getElementById("walletAddress").textContent = `${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
+    const connectSection = document.getElementById("connect-section");
+    const accountSection = document.getElementById("account-section");
+    const appContent = document.getElementById("app-content");
+    const walletAddress = document.getElementById("walletAddress");
+    
+    if (connectSection) connectSection.style.display = "none";
+    if (accountSection) accountSection.style.display = "block";
+    if (appContent) appContent.style.display = "block";
+    if (walletAddress) walletAddress.textContent = `${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
     
     // Event listeners for account/chain changes
     window.ethereum.on('accountsChanged', (accounts) => {
@@ -309,7 +356,12 @@ async function connectWallet() {
     
     // Load data
     showSuccess("Wallet connected successfully!");
-    await loadActiveAuctions();
+    
+    // Only load active auctions on the main page (not on detail pages)
+    const auctionsList = document.getElementById("auctionsList");
+    if (auctionsList) {
+      await loadActiveAuctions();
+    }
     
   } catch (error) {
     console.error("Connection error:", error);
@@ -2242,7 +2294,12 @@ function showAuctionDetails(auctionId) {
   
   // Redirigir a la página de detalles de la subasta
   const baseUrl = window.location.origin;
-  window.location.href = `${baseUrl}/auctiondetails.html?id=${auctionId}`;
+  // Comprobar si estamos en GitHub Pages para incluir la ruta AdrianAuctions
+  if (baseUrl.includes('github.io')) {
+    window.location.href = `${baseUrl}/AdrianAuctions/auctiondetails.html?id=${auctionId}`;
+  } else {
+    window.location.href = `${baseUrl}/auctiondetails.html?id=${auctionId}`;
+  }
 }
 
 // Function to relist an auction (new function based on contract capability)
@@ -2488,8 +2545,13 @@ async function debugAuction(auctionId) {
 function shareAuction(auctionId, nftName) {
   // Get the base URL of the current site
   const baseUrl = window.location.origin;
-  // Create the share URL for this specific auction
-  const shareUrl = `${baseUrl}/auctiondetails.html?id=${auctionId}`;
+  // Create the share URL for this specific auction, adding AdrianAuctions path if on GitHub Pages
+  let shareUrl;
+  if (baseUrl.includes('github.io')) {
+    shareUrl = `${baseUrl}/AdrianAuctions/auctiondetails.html?id=${auctionId}`;
+  } else {
+    shareUrl = `${baseUrl}/auctiondetails.html?id=${auctionId}`;
+  }
   
   // Updated social share text with $ADRIAN, @adriancerda and emojis 🟦🟥
   const shareText = encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
@@ -2586,12 +2648,23 @@ async function loadAuctionDetails(auctionId) {
   try {
     console.log(`Loading details for auction #${auctionId}`);
     
-    if (!ethers || !contractInstance) {
-      await initializeContracts();
+    // Inicializar el contrato si aún no está listo
+    if (!readOnlyAuctionContract) {
+      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
     }
     
-    // Get the auction data from the contract
-    const auction = await contractInstance.getAuction(auctionId);
+    // Obtenemos los datos de la subasta directamente del contrato
+    // Usamos getManyAuctionDetails con un array de un solo ID
+    const auctionIdArray = [ethers.BigNumber.from(auctionId)];
+    const auctionsDetails = await readOnlyAuctionContract.getManyAuctionDetails(auctionIdArray);
+    
+    if (!auctionsDetails || auctionsDetails.length === 0) {
+      throw new Error("Auction not found");
+    }
+    
+    // La primera subasta del array es la que buscamos
+    const auction = auctionsDetails[0];
     console.log(`Raw auction data for #${auctionId}:`, auction);
     
     // Process auction data with safety checks
@@ -2630,6 +2703,8 @@ async function loadAuctionDetails(auctionId) {
     const isOwner = currentAccount && seller.toLowerCase() === currentAccount.toLowerCase();
     const isHighestBidder = currentAccount && highestBidder.toLowerCase() === currentAccount.toLowerCase();
     
+    // Resto del código tal cual...
+    // ... existing code ...
     // Determine NFT metadata
     let imageUrl = 'https://placehold.co/600x600?text=NFT+Image';
     let nftName = `NFT #${tokenId}`;

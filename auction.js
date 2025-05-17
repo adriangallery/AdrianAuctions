@@ -2570,15 +2570,31 @@ function shareAuction(auctionId, nftName) {
   // Updated social share text with $ADRIAN, @adriancerda and emojis 🟦🟥
   const shareText = encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
   
-  // Usar siempre la imagen fija proporcionada para compartir
+  // Imagen fija para respaldo
   const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
+  
+  // Intentar obtener la imagen del NFT actual (si estamos en la página de detalles)
+  let nftImage = document.getElementById('detail-nft-image');
+  let shareImageUrl = fixedShareImage;
+  
+  if (nftImage && nftImage.src && nftImage.src !== 'https://placehold.co/600x600?text=NFT+Image') {
+    // Convertir a URL absoluta si es necesario
+    if (!nftImage.src.startsWith('http') && !nftImage.src.startsWith('data:')) {
+      shareImageUrl = new URL(nftImage.src, baseUrl).href;
+    } else {
+      shareImageUrl = nftImage.src;
+    }
+    console.log(`Usando imagen de NFT para compartir: ${shareImageUrl}`);
+  } else {
+    console.log(`No se encontró imagen de NFT válida, usando imagen predeterminada: ${fixedShareImage}`);
+  }
   
   // Actualizar metadatos para compartir
   const ogImageElement = document.getElementById('og-image');
   const twitterImageElement = document.getElementById('twitter-image');
   
-  if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
-  if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
+  if (ogImageElement) ogImageElement.setAttribute('content', shareImageUrl);
+  if (twitterImageElement) twitterImageElement.setAttribute('content', shareImageUrl);
   
   // Create modal for sharing
   const modalHTML = `
@@ -2816,8 +2832,20 @@ async function loadAuctionDetails(auctionId) {
     // Update meta tags for social media sharing
     const currentUrl = window.location.href;
     
-    // Usar siempre la imagen fija para compartir en redes sociales
+    // Ahora usaremos la imagen del NFT actual para compartir, con imagen fija como respaldo
     const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
+    
+    // Convertir la URL de la imagen del NFT a URL absoluta si es necesario
+    let absoluteImageUrl = imageUrl;
+    
+    // Si la imagen es una URL relativa, convertirla a absoluta
+    if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+      const baseUrl = window.location.origin;
+      absoluteImageUrl = new URL(imageUrl, baseUrl).href;
+      console.log(`Convertida URL relativa a absoluta: ${imageUrl} -> ${absoluteImageUrl}`);
+    }
+    
+    console.log(`Imagen para compartir: ${absoluteImageUrl} (respaldo: ${fixedShareImage})`);
     
     // Actualizar metas OpenGraph
     const ogImageElement = document.getElementById('og-image');
@@ -2825,7 +2853,10 @@ async function loadAuctionDetails(auctionId) {
     const ogDescElement = document.getElementById('og-description');
     const ogUrlElement = document.getElementById('og-url');
     
-    if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
+    if (ogImageElement) {
+      // Usar primero la imagen del NFT, con la imagen fija como fallback a través de onerror
+      ogImageElement.setAttribute('content', absoluteImageUrl);
+    }
     if (ogTitleElement) ogTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
     if (ogDescElement) ogDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
     if (ogUrlElement) ogUrlElement.setAttribute('content', currentUrl);
@@ -2836,7 +2867,10 @@ async function loadAuctionDetails(auctionId) {
     const twitterDescElement = document.getElementById('twitter-description');
     const twitterImageAltElement = document.getElementById('twitter-image-alt');
     
-    if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
+    if (twitterImageElement) {
+      // Usar primero la imagen del NFT, con la imagen fija como fallback
+      twitterImageElement.setAttribute('content', absoluteImageUrl);
+    }
     if (twitterTitleElement) twitterTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
     if (twitterDescElement) twitterDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEther(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
     if (twitterImageAltElement) twitterImageAltElement.setAttribute('content', `NFT auction image of ${nftName}`);

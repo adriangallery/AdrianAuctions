@@ -21,6 +21,65 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script defer src="auction.js"></script>
+  <script>
+    // Script para manejar el fallback de imágenes para redes sociales
+    document.addEventListener('DOMContentLoaded', function() {
+      // Verificar que la imagen compartida sea válida, si no usar la de respaldo
+      function checkImageValidity(url, fallbackUrl) {
+        return new Promise((resolve) => {
+          if (!url || url === 'https://placehold.co/600x600?text=NFT+Image') {
+            console.log('URL no válida o placeholder, usando fallback inmediatamente');
+            resolve(fallbackUrl);
+            return;
+          }
+          
+          const img = new Image();
+          img.onload = function() {
+            console.log('Imagen cargada correctamente:', url);
+            resolve(url);
+          };
+          img.onerror = function() {
+            console.log('Error al cargar la imagen:', url, 'Usando fallback:', fallbackUrl);
+            resolve(fallbackUrl);
+          };
+          
+          // Establecer un timeout por si la carga toma demasiado tiempo
+          setTimeout(() => {
+            console.log('Timeout al cargar la imagen:', url, 'Usando fallback:', fallbackUrl);
+            resolve(fallbackUrl);
+          }, 3000);
+          
+          img.src = url;
+        });
+      }
+      
+      // Obtener los elementos meta para las imágenes
+      const ogImage = document.getElementById('og-image');
+      const twitterImage = document.getElementById('twitter-image');
+      
+      if (ogImage && twitterImage) {
+        const fallbackUrl = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
+        
+        // Verificar las imágenes meta después de que la página se haya cargado
+        // (lo que significa que el JavaScript de auction.js ya ha establecido las URLs)
+        setTimeout(async () => {
+          const ogImageUrl = ogImage.getAttribute('content');
+          const validOgImageUrl = await checkImageValidity(ogImageUrl, fallbackUrl);
+          if (validOgImageUrl !== ogImageUrl) {
+            console.log('Actualizando og:image a fallback');
+            ogImage.setAttribute('content', validOgImageUrl);
+          }
+          
+          const twitterImageUrl = twitterImage.getAttribute('content');
+          const validTwitterImageUrl = await checkImageValidity(twitterImageUrl, fallbackUrl);
+          if (validTwitterImageUrl !== twitterImageUrl) {
+            console.log('Actualizando twitter:image a fallback');
+            twitterImage.setAttribute('content', validTwitterImageUrl);
+          }
+        }, 2000); // Dar tiempo a que auction.js establezca las URLs primero
+      }
+    });
+  </script>
   <style>
     :root {
       --bg-color: #f0f0f0;

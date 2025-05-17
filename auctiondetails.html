@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta property="og:title" content="Adrian Auction - NFT Auction" id="og-title">
   <meta property="og:description" content="View and bid on this NFT auction on Adrian Auction" id="og-description">
-  <meta property="og:image" content="" id="og-image">
+  <meta property="og:image" content="https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png" id="og-image">
   <meta property="og:url" content="" id="og-url">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
@@ -13,7 +13,7 @@
   <meta name="twitter:creator" content="@adriancerda">
   <meta name="twitter:title" content="Adrian Auction - NFT Auction" id="twitter-title">
   <meta name="twitter:description" content="Check out this NFT auction on Adrian Auction! $ADRIAN @adriancerda 🟦🟥" id="twitter-description">
-  <meta name="twitter:image" content="" id="twitter-image">
+  <meta name="twitter:image" content="https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png" id="twitter-image">
   <meta name="twitter:image:alt" content="NFT auction image" id="twitter-image-alt">
   <title>Adrian Auction - Auction Details</title>
   <link rel="icon" href="favicon.ico" type="image/x-icon">
@@ -711,8 +711,8 @@
           // Asegurar que la URL de la imagen sea absoluta
           let absoluteImageUrl = imageUrl;
           if (!absoluteImageUrl || absoluteImageUrl === '' || absoluteImageUrl.includes('placeholder') || absoluteImageUrl === 'https://placehold.co/600x600?text=NFT+Image') {
-            // Usar una imagen alternativa confiable si no hay imagen
-            absoluteImageUrl = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo.png';
+            // Usar la nueva imagen como alternativa confiable si no hay imagen
+            absoluteImageUrl = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png';
           } else if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
             // Si es una URL relativa, la convertimos a absoluta
             const baseUrl = window.location.origin;

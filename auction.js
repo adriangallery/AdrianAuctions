@@ -2583,6 +2583,14 @@ function shareAuction(auctionId, nftName) {
     
     if (ogImageElement) ogImageElement.setAttribute('content', currentNftImage);
     if (twitterImageElement) twitterImageElement.setAttribute('content', currentNftImage);
+  } else {
+    // Si no se encontró una imagen, usar la imagen predeterminada
+    const defaultImage = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png';
+    const ogImageElement = document.getElementById('og-image');
+    const twitterImageElement = document.getElementById('twitter-image');
+    
+    if (ogImageElement) ogImageElement.setAttribute('content', defaultImage);
+    if (twitterImageElement) twitterImageElement.setAttribute('content', defaultImage);
   }
   
   // Create modal for sharing
@@ -2824,8 +2832,8 @@ async function loadAuctionDetails(auctionId) {
     // Asegurar que la URL de la imagen sea absoluta
     let absoluteImageUrl = imageUrl;
     if (!absoluteImageUrl || absoluteImageUrl === '' || absoluteImageUrl.includes('placeholder') || absoluteImageUrl === 'https://placehold.co/600x600?text=NFT+Image') {
-      // Usar una imagen alternativa confiable si no hay imagen
-      absoluteImageUrl = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo.png';
+      // Usar la nueva imagen como alternativa confiable si no hay imagen
+      absoluteImageUrl = 'https://adriangallery.github.io/AdrianAuctions/adrian-auction-logo-new.png';
     } else if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('https')) {
       // Si es una URL relativa, la convertimos a absoluta
       const baseUrl = window.location.origin;

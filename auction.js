@@ -419,7 +419,8 @@ async function loadUserNFTs(userAddress, appendMode = false) {
     }
     
     // Construir URL con paginación usando el pageKey si existe
-    let alchemyUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=${nftPageSize}`;
+    // Modificación: Añadir parámetro para filtrar solo ERC721
+    let alchemyUrl = `https://base-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTsForOwner?owner=${userAddress}&withMetadata=true&pageSize=${nftPageSize}&tokenType=ERC721`;
     if (nftPageKey && appendMode) {
       alchemyUrl += `&pageKey=${encodeURIComponent(nftPageKey)}`;
     }
@@ -459,7 +460,20 @@ async function loadUserNFTs(userAddress, appendMode = false) {
             return null;
           }
           
+          // Filtrar NFTs - excluir contratos específicos si es necesario
+          // Por ejemplo, excluir un contrato que sabemos que causa problemas
+          if (nft.contract.address && nft.contract.address.toLowerCase() === "0x1234567890abcdef1234567890abcdef12345678".toLowerCase()) {
+            console.log(`Excluyendo NFT del contrato problemático: ${nft.contract.address}`);
+            return null;
+          }
+          
           console.log("Procesando NFT completo:", nft);
+          
+          // Verificar que sea ERC721 (aunque ya filtramos en la API)
+          if (nft.tokenType && nft.tokenType !== "ERC721") {
+            console.log(`Excluyendo token que no es ERC721: ${nft.tokenType}`);
+            return null;
+          }
           
           // Extraer tokenId - podría estar directamente en nft.tokenId o en nft.id.tokenId
           let tokenId;

@@ -1,0 +1,6 @@
+  
+  // Show auction details
+  auctionDetails.style.display = "block";
+  
+  showSuccess("NFT selected for auction");
+} 

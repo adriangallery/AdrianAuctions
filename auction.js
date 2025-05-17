@@ -1306,7 +1306,7 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
   }
   
   // Add share button to all auctions
-  actionButtons += `<button class="btn-secondary w-100" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
+  actionButtons += `<button class="btn-action w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
   
   // CRITICAL FIX - Time display logic
   let timeDisplay = '';

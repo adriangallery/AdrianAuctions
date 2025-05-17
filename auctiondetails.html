@@ -521,36 +521,266 @@
         document.getElementById('telegram-share').href = `https://t.me/share/url?url=${url}&text=${text}`;
       }
       
+      // Fallback function para inicializar el contrato manualmente
+      async function initializeContractManually() {
+        console.log("Inicializando contrato manualmente...");
+        
+        // Estas variables deben coincidir con las que están en auction.js
+        const CONTRACT_ADDRESS = "0x1df1de9cb0cb887f08634ec66c4c8d781691f497";
+        const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
+        const RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+        
+        // ABIs
+        const AUCTION_ABI = [
+          "function getManyAuctionDetails(uint256[]) view returns ((address nftContract,uint256 tokenId,address seller,uint256 reservePrice,uint256 endTime,address highestBidder,uint256 highestBid,bool active,bool finalized)[] memory)"
+        ];
+        
+        const ERC721_ABI = [
+          "function tokenURI(uint256 tokenId) external view returns (string memory)"
+        ];
+        
+        try {
+          // Inicializar proveedor read-only
+          window.readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+          window.readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, window.readOnlyProvider);
+          
+          console.log("Contrato inicializado manualmente con éxito");
+          return true;
+        } catch (error) {
+          console.error("Error inicializando contrato manualmente:", error);
+          return false;
+        }
+      }
+      
+      // Fallback function para cargar detalles de la subasta
+      async function loadAuctionDetailsManually(auctionId) {
+        console.log(`Cargando detalles para subasta #${auctionId} manualmente`);
+        
+        try {
+          // Verificar si tenemos acceso al contrato
+          if (!window.readOnlyAuctionContract) {
+            const success = await initializeContractManually();
+            if (!success) {
+              throw new Error("No se pudo inicializar el contrato");
+            }
+          }
+          
+          // Obtener detalles de la subasta
+          const auctionIdArray = [ethers.BigNumber.from(auctionId)];
+          const auctionsDetails = await window.readOnlyAuctionContract.getManyAuctionDetails(auctionIdArray);
+          
+          if (!auctionsDetails || auctionsDetails.length === 0) {
+            throw new Error("Subasta no encontrada");
+          }
+          
+          // Procesar datos de la subasta
+          const auction = auctionsDetails[0];
+          console.log(`Datos de subasta #${auctionId}:`, auction);
+          
+          // Extraer valores con manejo seguro
+          const nftContract = auction.nftContract || ethers.constants.AddressZero;
+          const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+          const seller = auction.seller || ethers.constants.AddressZero;
+          const highestBidder = auction.highestBidder || ethers.constants.AddressZero;
+          const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+          const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+          
+          // Convertir tiempo final
+          let endTime;
+          try {
+            endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+          } catch (err) {
+            console.error("Error al convertir endTime:", err);
+            endTime = 0;
+          }
+          
+          // Convertir valores booleanos
+          const isActive = auction.active === true || auction.active === 1;
+          const isFinalized = auction.finalized === true || auction.finalized === 1;
+          
+          const now = Math.floor(Date.now() / 1000);
+          const timeRemaining = endTime - now;
+          
+          // Nombre del NFT y URL de imagen por defecto
+          let imageUrl = 'https://placehold.co/600x600?text=NFT+Image';
+          let nftName = `NFT #${tokenId}`;
+          
+          // Tratar de obtener metadata del NFT
+          if (nftContract && nftContract !== ethers.constants.AddressZero) {
+            try {
+              const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, window.readOnlyProvider);
+              
+              try {
+                const tokenURI = await nftContractInstance.tokenURI(tokenId);
+                console.log(`Token URI obtenido:`, tokenURI);
+                
+                if (tokenURI) {
+                  // Intentar obtener metadata
+                  let metadata = null;
+                  let metadataUrl = tokenURI;
+                  
+                  if (tokenURI.startsWith('ipfs://')) {
+                    const ipfsHash = tokenURI.replace('ipfs://', '');
+                    metadataUrl = ipfsHash.startsWith('ipfs/') 
+                      ? `https://ipfs.io/${ipfsHash}`
+                      : `https://ipfs.io/ipfs/${ipfsHash}`;
+                  }
+                  
+                  if (metadataUrl.startsWith('http')) {
+                    try {
+                      const response = await fetch(metadataUrl);
+                      metadata = await response.json();
+                      
+                      if (metadata) {
+                        if (metadata.name) nftName = metadata.name;
+                        
+                        if (metadata.image) {
+                          if (metadata.image.startsWith('ipfs://')) {
+                            const imageHash = metadata.image.replace('ipfs://', '');
+                            imageUrl = imageHash.startsWith('ipfs/') 
+                              ? `https://ipfs.io/${imageHash}`
+                              : `https://ipfs.io/ipfs/${imageHash}`;
+                          } else {
+                            imageUrl = metadata.image;
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.warn("Error obteniendo metadata:", error);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn(`Error obteniendo tokenURI:`, err);
+              }
+            } catch (error) {
+              console.warn(`Error cargando imagen NFT para subasta #${auctionId}:`, error);
+            }
+          }
+          
+          // Actualizar UI con datos de la subasta
+          document.getElementById('detail-title').textContent = nftName;
+          document.getElementById('detail-nft-image').src = imageUrl;
+          document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
+          document.getElementById('detail-contract').textContent = formatAddressSimple(nftContract);
+          document.getElementById('detail-token-id').textContent = tokenId;
+          document.getElementById('detail-seller').textContent = formatAddressSimple(seller);
+          document.getElementById('detail-reserve-price').textContent = `${formatEtherSimple(reservePrice)} ADRIAN`;
+          document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? `${formatEtherSimple(highestBid)} ADRIAN` : "No bids yet";
+          document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddressSimple(highestBidder) : "No bidder yet";
+          
+          // Actualizar estado de tiempo
+          if (isActive && timeRemaining > 0) {
+            document.getElementById('detail-time-label').textContent = "Time Remaining";
+            document.getElementById('detail-time-value').textContent = formatTimeRemainingSimple(endTime);
+          } else {
+            document.getElementById('detail-time-label').textContent = "Status";
+            document.getElementById('detail-time-value').textContent = isActive ? "Active" : (isFinalized ? "Finalized" : "Inactive");
+          }
+          
+          // Crear botones de acción
+          let actionButtons = `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
+          document.getElementById('detail-action-container').innerHTML = actionButtons;
+          
+          // Ocultar loading y mostrar detalles
+          document.getElementById('loading-auction').style.display = 'none';
+          document.getElementById('auction-details-container').style.display = 'block';
+          
+          // Actualizar info para compartir
+          updateShareLinks(nftName, auctionId);
+          const ogImageElement = document.getElementById('og-image');
+          if (ogImageElement) {
+            ogImageElement.setAttribute('content', imageUrl);
+          }
+          
+          // Actualizar título de la página
+          document.title = `${nftName} - Adrian Auction`;
+          
+        } catch (error) {
+          console.error(`Error cargando subasta #${auctionId}:`, error);
+          document.getElementById('loading-auction').style.display = 'none';
+          document.getElementById('no-auction-message').style.display = 'block';
+        }
+      }
+      
+      // Funciones helper simplificadas
+      function formatEtherSimple(wei) {
+        // Convertir wei a ether (string)
+        try {
+          return ethers.utils.formatUnits(wei, 18);
+        } catch (e) {
+          return "0";
+        }
+      }
+      
+      function formatAddressSimple(address) {
+        if (!address) return "";
+        return `${address.slice(0,6)}...${address.slice(-4)}`;
+      }
+      
+      function formatTimeRemainingSimple(endTime) {
+        const now = Math.floor(Date.now() / 1000);
+        const secondsRemaining = endTime - now;
+        
+        if (secondsRemaining <= 0) return "Ended";
+        
+        const days = Math.floor(secondsRemaining / 86400);
+        const hours = Math.floor((secondsRemaining % 86400) / 3600);
+        const minutes = Math.floor((secondsRemaining % 3600) / 60);
+        const seconds = secondsRemaining % 60;
+        
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        if (minutes > 0) return `${minutes}m ${seconds}s`;
+        return `${seconds}s`;
+      }
+      
       // Load the auction if ID exists
       if (auctionId) {
         console.log(`Loading auction #${auctionId}`);
         
         // Event listener for when auction.js loads
         window.addEventListener('auctionJsLoaded', function() {
-          // Start connection process
-          connectWallet().then(() => {
-            // Once connected, load the specific auction
-            loadAuctionDetails(auctionId);
-          });
+          console.log("auction.js cargado, intentando cargar detalles...");
+          
+          // Se intenta usar las funciones de auction.js primero
+          if (typeof connectWallet === 'function' && typeof loadAuctionDetails === 'function') {
+            connectWallet().then(() => {
+              loadAuctionDetails(auctionId);
+            }).catch(err => {
+              console.error("Error con connectWallet:", err);
+              // Si falla, usar el método manual
+              loadAuctionDetailsManually(auctionId);
+            });
+          } else {
+            console.warn("Las funciones necesarias no están disponibles en auction.js, usando método alternativo");
+            loadAuctionDetailsManually(auctionId);
+          }
         });
         
         // Check if auction.js is already loaded (happens if this script runs after auction.js)
-        if (typeof connectWallet === 'function') {
+        if (typeof connectWallet === 'function' && typeof loadAuctionDetails === 'function') {
+          console.log("Las funciones ya están disponibles, ejecutando directamente");
           connectWallet().then(() => {
             loadAuctionDetails(auctionId);
+          }).catch(err => {
+            console.error("Error con connectWallet:", err);
+            loadAuctionDetailsManually(auctionId);
           });
+        } else {
+          // Si después de 3 segundos no se ha cargado auction.js, usar método alternativo
+          setTimeout(() => {
+            if (document.getElementById('loading-auction').style.display !== 'none') {
+              console.warn("Timeout esperando auction.js, cargando manualmente");
+              loadAuctionDetailsManually(auctionId);
+            }
+          }, 3000);
         }
       } else {
         // No auction ID provided
         document.getElementById('loading-auction').style.display = 'none';
         document.getElementById('no-auction-message').style.display = 'block';
       }
-      
-      // Function to load auction details (will be implemented in auction.js)
-      window.loadAuctionDetails = async function(auctionId) {
-        // This function will be called from auction.js
-        // The implementation is in the auction.js file that we'll add next
-      };
     });
   </script>
 </body>

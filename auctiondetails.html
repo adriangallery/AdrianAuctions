@@ -288,18 +288,6 @@
       background-color: #0088cc;
     }
     
-    .share-copy {
-      background-color: #6c757d;
-    }
-    
-    .btn-share {
-      background-color: #6c757d;
-    }
-    
-    .btn-share:hover {
-      background-color: #5a6268;
-    }
-    
     .footer {
       text-align: center;
       margin-top: 2rem;
@@ -694,8 +682,8 @@
             actionButtons += `<button class="btn-action w-100 mb-2" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
           }
           
-          // Añadir botón para compartir con el mismo estilo pero color distinto
-          actionButtons += `<button class="btn-action btn-share w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
+          // Añadir botón para compartir con exactamente el mismo estilo que Place Bid
+          actionButtons += `<button class="btn-action w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
           
           // Añadir botón para volver a todas las subastas
           actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;

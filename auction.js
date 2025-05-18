@@ -3022,7 +3022,7 @@ async function loadAuctionsForCarousel() {
   try {
     console.log("Loading auctions for the mini-carousel...");
     
-    // Initialize contract if not available
+    // Initialize contract if not available - hacer esto más rápido
     if (!readOnlyAuctionContract || !readOnlyProvider) {
       console.log("Contract not initialized for carousel, initializing now...");
       readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
@@ -3030,7 +3030,7 @@ async function loadAuctionsForCarousel() {
       console.log("Contract initialized successfully for carousel");
     }
     
-    // 1. Get all active auctions
+    // 1. Get all active auctions - limitar a máximo 5 para carga inicial rápida
     const count = await readOnlyAuctionContract.getActiveAuctionsCount();
     console.log(`Active auctions for carousel: ${count.toString()}`);
     
@@ -3039,8 +3039,8 @@ async function loadAuctionsForCarousel() {
       return [];
     }
     
-    // 2. Limit to a maximum of 10 auctions for the carousel
-    const pageSize = Math.min(10, count.toNumber());
+    // 2. Limit to a maximum of 5 auctions for carga inicial rápida
+    const pageSize = Math.min(5, count.toNumber());
     const ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
     const auctionIds = ids.map(id => id.toNumber());
     
@@ -3062,7 +3062,7 @@ async function loadAuctionsForCarousel() {
       return aTime - bTime;
     });
     
-    // 5. Process data for the carousel
+    // 5. Process data for the carousel - versión optimizada
     const carouselData = await Promise.all(activeAuctions.map(async (auction, index) => {
       const auctionId = auctionIds[details.indexOf(auction)];
       
@@ -3072,67 +3072,9 @@ async function loadAuctionsForCarousel() {
       const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
       const endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
       
-      // 6. Get NFT image
+      // 6. Get NFT image - usar una imagen placeholder inicialmente para acelerar carga
       let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
       let nftName = `NFT #${tokenId}`;
-      
-      // Try to get NFT metadata
-      if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
-        try {
-          const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
-          
-          try {
-            const tokenURI = await nftContractInstance.tokenURI(tokenId);
-            
-            if (tokenURI) {
-              let metadata = null;
-              
-              // Handle IPFS URLs
-              if (tokenURI.startsWith('ipfs://')) {
-                const ipfsHash = tokenURI.replace('ipfs://', '');
-                const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
-                  `https://ipfs.io/${ipfsHash}` : 
-                  `https://ipfs.io/ipfs/${ipfsHash}`;
-                
-                try {
-                  const response = await fetch(ipfsUrl);
-                  metadata = await response.json();
-                } catch (error) {
-                  console.warn("Error getting metadata from IPFS for carousel:", error);
-                }
-              } else if (tokenURI.startsWith('http')) {
-                try {
-                  const response = await fetch(tokenURI);
-                  metadata = await response.json();
-                } catch (error) {
-                  console.warn("Error getting HTTP metadata for carousel:", error);
-                }
-              }
-              
-              if (metadata) {
-                if (metadata.name) {
-                  nftName = metadata.name;
-                }
-                
-                if (metadata.image) {
-                  if (metadata.image.startsWith('ipfs://')) {
-                    const imageHash = metadata.image.replace('ipfs://', '');
-                    imageUrl = imageHash.startsWith('ipfs/') ? 
-                      `https://ipfs.io/${imageHash}` : 
-                      `https://ipfs.io/ipfs/${imageHash}`;
-                  } else {
-                    imageUrl = metadata.image;
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.warn(`Error fetching tokenURI for carousel:`, err);
-          }
-        } catch (error) {
-          console.warn(`Error loading NFT image for carousel:`, error);
-        }
-      }
       
       // 7. Calculate price to display (highest bid or reserve price)
       const displayPrice = highestBid.gt(0) ? 
@@ -3150,11 +3092,19 @@ async function loadAuctionsForCarousel() {
         imageUrl,
         displayPrice,
         timeRemaining,
-        formattedTime
+        formattedTime,
+        nftContract,
+        tokenId
       };
     }));
     
     console.log("Carousel data prepared:", carouselData);
+    
+    // Iniciar carga de imágenes en segundo plano después de mostrar el carousel
+    setTimeout(() => {
+      loadCarouselImages(carouselData);
+    }, 500);
+    
     return carouselData;
     
   } catch (error) {
@@ -3162,6 +3112,110 @@ async function loadAuctionsForCarousel() {
     return [];
   }
 }
+
+// Nueva función para cargar imágenes en segundo plano
+async function loadCarouselImages(carouselData) {
+  try {
+    for (const auction of carouselData) {
+      // Solo procesar si tenemos los datos necesarios
+      if (!auction.nftContract || auction.nftContract === ethers.constants.AddressZero) continue;
+      
+      try {
+        const nftContractInstance = new ethers.Contract(auction.nftContract, ERC721_ABI, readOnlyProvider);
+        const tokenURI = await nftContractInstance.tokenURI(auction.tokenId);
+        
+        if (!tokenURI) continue;
+        
+        let metadata = null;
+        
+        // Handle IPFS URLs
+        if (tokenURI.startsWith('ipfs://')) {
+          const ipfsHash = tokenURI.replace('ipfs://', '');
+          const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
+            `https://ipfs.io/${ipfsHash}` : 
+            `https://ipfs.io/ipfs/${ipfsHash}`;
+          
+          try {
+            const response = await fetch(ipfsUrl);
+            metadata = await response.json();
+          } catch (error) {
+            console.warn("Error getting metadata from IPFS for carousel:", error);
+            continue;
+          }
+        } else if (tokenURI.startsWith('http')) {
+          try {
+            const response = await fetch(tokenURI);
+            metadata = await response.json();
+          } catch (error) {
+            console.warn("Error getting HTTP metadata for carousel:", error);
+            continue;
+          }
+        }
+        
+        if (!metadata) continue;
+        
+        if (metadata.name) {
+          auction.nftName = metadata.name;
+        }
+        
+        if (metadata.image) {
+          if (metadata.image.startsWith('ipfs://')) {
+            const imageHash = metadata.image.replace('ipfs://', '');
+            auction.imageUrl = imageHash.startsWith('ipfs/') ? 
+              `https://ipfs.io/${imageHash}` : 
+              `https://ipfs.io/ipfs/${imageHash}`;
+          } else {
+            auction.imageUrl = metadata.image;
+          }
+        }
+        
+        // Actualizar el carousel con la nueva imagen y nombre
+        updateCarouselItem(auction);
+        
+      } catch (error) {
+        console.warn(`Error loading image for auction #${auction.auctionId}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error("Error in background image loading:", error);
+  }
+}
+
+// Función para actualizar un elemento específico del carousel
+function updateCarouselItem(auction) {
+  const tickerItems = document.querySelectorAll('.ticker-item');
+  
+  for (const item of tickerItems) {
+    const auctionCard = item.querySelector('.auction-carousel-card');
+    if (!auctionCard) continue;
+    
+    // Verificar si este item corresponde a la subasta que queremos actualizar
+    if (auctionCard.getAttribute('onclick') === `showAuctionDetails(${auction.auctionId})`) {
+      // Actualizar título
+      const titleElement = auctionCard.querySelector('.carousel-title');
+      if (titleElement) titleElement.textContent = auction.nftName;
+      
+      // Actualizar imagen
+      const imgElement = auctionCard.querySelector('img');
+      if (imgElement) imgElement.src = auction.imageUrl;
+    }
+  }
+}
+
+// Inicializar el carousel al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  // Inicializar el carousel inmediatamente con alta prioridad
+  console.log("Iniciando carga del ticker carousel...");
+  
+  // Ejecutar inmediatamente, sin esperar otras operaciones
+  setTimeout(() => {
+    updateAuctionCarousel();
+    console.log("Ticker carousel inicializado correctamente");
+  }, 0);
+  
+  // Actualizar el carousel periódicamente
+  setInterval(updateAuctionCarousel, 60000);
+});
 
 // Function to update the carousel
 function updateAuctionCarousel() {
@@ -3203,14 +3257,3 @@ function updateAuctionCarousel() {
     tickerContainer.innerHTML = tickerItems + tickerItems;
   });
 }
-
-// Inicializar el carousel al cargar la página
-document.addEventListener('DOMContentLoaded', () => {
-  // Inicializar el carousel
-  updateAuctionCarousel();
-  
-  // Actualizar el carousel cada minuto
-  setInterval(updateAuctionCarousel, 60000);
-  
-  console.log("Ticker carousel inicializado correctamente");
-});

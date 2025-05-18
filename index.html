@@ -330,10 +330,10 @@
       100% { transform: rotate(360deg); }
     }
     
-    /* Estilos para el mini-carrusel de subastas */
+    /* Styles for the auction mini-carousel */
     .sticky-carousel {
       position: sticky;
-      top: 42px; /* Justo debajo del menú sticky */
+      top: 42px; /* Just below the sticky menu */
       z-index: 999;
       background-color: var(--screen-bg);
       margin-top: 0;
@@ -347,7 +347,7 @@
     
     .carousel-inner {
       display: flex;
-      transition: all 0.3s ease;
+      transition: transform 0.5s ease-in-out;
     }
     
     .carousel-item {
@@ -375,6 +375,12 @@
     .auction-carousel-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+      background-color: #f8f9fa;
+    }
+    
+    /* Carousel hover styles */
+    #auction-carousel:hover .carousel-inner {
+      animation-play-state: paused;
     }
     
     .carousel-img-container {
@@ -425,22 +431,10 @@
       white-space: nowrap;
     }
     
-    /* Personalizar controles del carrusel */
-    .carousel-control-prev, .carousel-control-next {
-      width: 8%;
-      opacity: 0.9;
-    }
-    
-    .carousel-control-prev-icon, .carousel-control-next-icon {
-      background-color: rgba(0,0,0,0.2);
-      border-radius: 50%;
-      padding: 10px;
-    }
-    
-    /* Adaptación mobile */
+    /* Mobile adaptation */
     @media (max-width: 576px) {
       .sticky-carousel {
-        top: 36px; /* Ajustar para el menú más pequeño en mobile */
+        top: 36px; /* Adjust for smaller menu on mobile */
       }
       
       .auction-carousel-card {
@@ -509,25 +503,18 @@
         </li>
       </ul>
       
-      <!-- Mini Carousel para subastas activas -->
+      <!-- Mini Carousel for active auctions -->
       <div id="auction-carousel-container" class="sticky-carousel mb-3">
         <div id="auction-carousel" class="carousel slide" data-bs-ride="carousel">
           <div class="carousel-inner" id="auction-carousel-items">
-            <!-- Los items del carrusel se cargarán dinámicamente -->
+            <!-- Carousel items will be loaded dynamically -->
             <div class="carousel-item active">
               <div class="auction-carousel-card">
-                <p class="text-center">Cargando subastas...</p>
+                <p class="text-center">Loading auctions...</p>
               </div>
             </div>
           </div>
-          <button class="carousel-control-prev" type="button" data-bs-target="#auction-carousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Previous</span>
-          </button>
-          <button class="carousel-control-next" type="button" data-bs-target="#auction-carousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Next</span>
-          </button>
+          <!-- No navigation buttons for smoother experience -->
         </div>
       </div>
       
@@ -730,6 +717,26 @@
             stickyNav.classList.add('sticky-nav-active');
           } else {
             stickyNav.classList.remove('sticky-nav-active');
+          }
+        });
+      }
+      
+      // Add pause on hover functionality for carousel
+      const carousel = document.getElementById('auction-carousel');
+      if (carousel) {
+        carousel.addEventListener('mouseenter', function() {
+          // Try to get instance, it might not be ready yet
+          const carouselInstance = bootstrap.Carousel.getInstance(carousel);
+          if (carouselInstance) {
+            carouselInstance.pause();
+          }
+        });
+        
+        carousel.addEventListener('mouseleave', function() {
+          // Try to get instance, it might not be ready yet
+          const carouselInstance = bootstrap.Carousel.getInstance(carousel);
+          if (carouselInstance) {
+            carouselInstance.cycle();
           }
         });
       }

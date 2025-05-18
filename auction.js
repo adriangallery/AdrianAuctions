@@ -3275,6 +3275,37 @@ async function loadAuctionsForCarousel() {
 
 // Function to update the ticker display
 function updateAuctionCarousel() {
+  // Añadir CSS para ralentizar la animación del carousel
+  const styleElement = document.createElement('style');
+  styleElement.id = 'carousel-animation-style';
+  
+  // Solo añadir el estilo si no existe ya
+  if (!document.getElementById('carousel-animation-style')) {
+    styleElement.textContent = `
+      @keyframes ticker {
+        0% {
+          transform: translateX(0);
+        }
+        100% {
+          transform: translateX(-100%);
+        }
+      }
+      
+      .ticker-content {
+        display: inline-block;
+        white-space: nowrap;
+        /* Doble duración para reducir velocidad a la mitad */
+        animation: ticker 30s linear infinite !important;
+      }
+      
+      /* Pausar animación al pasar el ratón */
+      .ticker-container:hover .ticker-content {
+        animation-play-state: paused !important;
+      }
+    `;
+    document.head.appendChild(styleElement);
+  }
+
   loadAuctionsForCarousel().then(auctions => {
     const tickerContainer = document.getElementById('auction-carousel-items');
     if (!tickerContainer) {
@@ -3309,21 +3340,15 @@ function updateAuctionCarousel() {
       </div>
     `).join('');
     
-    // Duplicate the items multiple times to ensure a smooth, continuous loop
-    // The more duplicates, the smoother the transition when the ticker loops
-    tickerContainer.innerHTML = tickerItems + tickerItems + tickerItems;
+    // Duplicate the items to create a seamless loop effect
+    tickerContainer.innerHTML = tickerItems + tickerItems;
     
-    // Update animation duration based on number of items
-    // More items should move faster to keep the speed consistent
-    const totalItems = auctions.length;
-    let animationDuration = 60; // base duration in seconds (already slow)
-    if (totalItems > 5) {
-      // Increase speed slightly for many items so users see more variety
-      animationDuration = 80;
+    // Asegurarnos de que el contenedor usa la clase correcta para la animación
+    const parentContainer = tickerContainer.parentElement;
+    if (parentContainer) {
+      parentContainer.classList.add('ticker-container');
+      tickerContainer.classList.add('ticker-content');
     }
-    
-    // Apply animation duration directly to the ticker
-    tickerContainer.style.animationDuration = `${animationDuration}s`;
   });
 }
 
@@ -3346,3 +3371,21 @@ document.addEventListener('DOMContentLoaded', () => {
     checkConnection();
   }
 });
+
+// Proveedor de solo lectura usando Infura para consultas más rápidas (solo para el carousel)
+const carouselInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
+  name: "base",
+  chainId: 8453
+});
+
+// Instancia de contrato de solo lectura para el carousel
+let carouselInfuraContract = null;
+
+// Inicializar contrato Infura para el carousel
+function initCarouselInfuraContract() {
+  if (!carouselInfuraContract) {
+    carouselInfuraContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, carouselInfuraProvider);
+    console.log("Inicializado contrato Infura para el carousel");
+  }
+  return carouselInfuraContract;
+}

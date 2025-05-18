@@ -7,25 +7,6 @@ const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
 const ALCHEMY_RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 const RPC_URL = ALCHEMY_RPC_URL;
 
-// Infura configuration for optimized data loading
-const INFURA_API_KEY = "87db149e423346b5ba4bbb152d983522"; // Replace with your actual Infura API key if needed
-const INFURA_RPC_URL = `https://base-mainnet.infura.io/v3/${INFURA_API_KEY}`;
-
-// Create a read-only provider using Infura for faster queries
-let readOnlyInfuraProvider = null;
-let readOnlyInfuraAuctionContract = null;
-
-// Try to initialize Infura provider
-try {
-  readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
-    name: "base",
-    chainId: 8453
-  });
-  console.log("Infura provider initialized successfully");
-} catch (error) {
-  console.warn("Could not initialize Infura provider:", error);
-}
-
 // Contract ABIs
 const AUCTION_ABI = [
   // Read functions
@@ -306,27 +287,6 @@ async function checkConnection() {
       console.error("Failed to check connection:", error);
     }
   }
-  
-  // Initialize read-only Infura contract even if user isn't connected
-  if (!readOnlyInfuraProvider) {
-    try {
-      readOnlyInfuraProvider = await initializeInfuraProvider();
-      if (readOnlyInfuraProvider) {
-        readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
-        console.log("Initialized read-only Infura contract during connection check");
-      }
-    } catch (error) {
-      console.warn("Could not initialize Infura during connection check:", error);
-    }
-  } else if (!readOnlyInfuraAuctionContract && readOnlyInfuraProvider) {
-    readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
-    console.log("Initialized read-only Infura contract with existing provider");
-  }
-  
-  // Initialize Alchemy for NFT retrieval regardless of connection
-  if (!alchemyWeb3) {
-    initAlchemyWeb3();
-  }
 }
 
 // Connect wallet
@@ -365,31 +325,10 @@ async function connectWallet() {
     // Initialize providers and contracts
     provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
-    
-    // Initialize read-only providers for faster queries
-    if (!readOnlyProvider) {
-      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL, { timeout: PROVIDER_TIMEOUT_MS });
-    }
-    
-    // Use Infura provider if available, otherwise fall back to standard provider
-    if (!readOnlyInfuraProvider) {
-      try {
-        readOnlyInfuraProvider = await initializeInfuraProvider();
-        console.log("Infura provider initialized successfully on connect");
-      } catch (error) {
-        console.warn("Could not initialize Infura provider on connect:", error);
-      }
-    }
+    readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
     
     // Create contract instances
     readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
-    
-    // Initialize Infura contract if provider is available
-    if (readOnlyInfuraProvider && !readOnlyInfuraAuctionContract) {
-      readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
-      console.log("Infura contract initialized successfully");
-    }
-    
     auctionContract = readOnlyAuctionContract.connect(signer);
     
     // Initialize Alchemy Web3
@@ -521,10 +460,15 @@ async function loadUserNFTs(userAddress, appendMode = false) {
             return null;
           }
           
-          // Filtrar NFTs - excluir contratos específicos si es necesario
-          // Por ejemplo, excluir un contrato que sabemos que causa problemas
-          if (nft.contract.address && nft.contract.address.toLowerCase() === "0x1234567890abcdef1234567890abcdef12345678".toLowerCase()) {
-            console.log(`Excluyendo NFT del contrato problemático: ${nft.contract.address}`);
+          // Filtrar NFTs - excluir contratos específicos
+          const excludedContracts = [
+            // Lista vacía por ahora - agregar contratos a filtrar en el futuro cuando sea necesario
+            // Por ejemplo: "0x6ba5a93878a0ac34b63fd9994a874a9b0111d587"
+          ].map(addr => addr.toLowerCase());
+
+          if (nft.contract.address && 
+              excludedContracts.includes(nft.contract.address.toLowerCase())) {
+            console.log(`Excluyendo NFT del contrato filtrado: ${nft.contract.address}`);
             return null;
           }
           
@@ -958,7 +902,7 @@ function formatTimeRemaining(endTime) {
   return `${seconds}s`;
 }
 
-// Optimized version using Infura and batch loading
+// Load active auctions for explore tab
 async function loadActiveAuctions() {
   const loadingElement = document.getElementById("loading-auctions");
   const noAuctionsMessage = document.getElementById("no-auctions-message");
@@ -969,41 +913,24 @@ async function loadActiveAuctions() {
   auctionsList.innerHTML = "";
   
   try {
-    console.log("Fetching active auctions using Infura...");
-    
-    // Use the Infura contract for faster queries, fallback to regular provider if needed
-    const contract = readOnlyInfuraAuctionContract || readOnlyAuctionContract;
-    
-    if (!contract) {
-      throw new Error("No contract available for loading auctions");
-    }
-    
-    // 1. Get the total count of active auctions
-    const count = await contract.getActiveAuctionsCount();
+    console.log("Fetching active auctions count...");
+    // 1. First, get the total count of active auctions
+    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
     console.log(`Active auctions count: ${count.toString()}`);
-    
-    if (count.toNumber() === 0) {
-      loadingElement.style.display = "none";
-      noAuctionsMessage.style.display = "block";
-      return;
-    }
     
     // 2. Calculate how many pages we need (contract limits to 50 per page)
     const pageSize = 50; // Contract has MAX_AUCTIONS_PER_PAGE = 50
     const pages = Math.ceil(count.toNumber() / pageSize);
     console.log(`Need to fetch ${pages} pages of auction IDs`);
     
-    // 3. Fetch all auction IDs from all pages in parallel for better performance
-    const fetchPromises = [];
-    for (let i = 0; i < pages; i++) {
-      fetchPromises.push(contract.getActiveAuctions(i, pageSize));
-    }
-    
-    const idResults = await Promise.all(fetchPromises);
+    // 3. Fetch all auction IDs from all pages
     let allIds = [];
-    idResults.forEach(ids => {
+    for (let i = 0; i < pages; i++) {
+      console.log(`Fetching auction IDs page ${i}...`);
+      const ids = await readOnlyAuctionContract.getActiveAuctions(i, pageSize);
+      console.log(`Page ${i} IDs:`, ids.map(id => id.toString()));
       allIds = allIds.concat(ids.map(id => id.toNumber()));
-    });
+    }
     
     console.log(`Total auction IDs fetched: ${allIds.length}`);
     
@@ -1013,25 +940,11 @@ async function loadActiveAuctions() {
       return;
     }
     
-    // 4. Fetch details in batches to avoid gas limit issues
-    const batchSize = 20;
-    const batches = [];
-    for (let i = 0; i < allIds.length; i += batchSize) {
-      batches.push(allIds.slice(i, i + batchSize));
-    }
+    // 4. Now get the detailed information for all auction IDs at once
+    console.log("Fetching auction details...");
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(allIds);
+    console.log("Received auction details:", details);
     
-    const detailPromises = batches.map(batch => contract.getManyAuctionDetails(batch));
-    const detailResults = await Promise.all(detailPromises);
-    
-    // Flatten the results
-    let details = [];
-    detailResults.forEach(result => {
-      details = details.concat(result);
-    });
-    
-    console.log("All auction details fetched successfully:", details.length);
-    
-    // Filter and sort as before
     const filter = document.getElementById("filterSelect").value;
     const now = Math.floor(Date.now() / 1000);
     
@@ -1070,19 +983,27 @@ async function loadActiveAuctions() {
     
     console.log(`Displaying ${filtered.length} auctions`);
     
-    // 5. Process and display each auction with a more efficient rendering approach
-    // Create a document fragment to minimize DOM operations
-    const fragment = document.createDocumentFragment();
-    
+    // 5. Process and display each auction
     for (let i = 0; i < filtered.length; i++) {
       const auction = filtered[i];
       const auctionId = allIds[details.indexOf(auction)]; // Get the correct auction ID
       
-      await renderAuction(auction, auctionId, fragment);
+      // Debug log to see the exact data structure
+      console.log(`Auction #${auctionId} raw data:`, {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString(),
+        seller: auction.seller, 
+        reservePrice: auction.reservePrice?.toString(),
+        endTime: auction.endTime?.toString(),
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString(),
+        active: auction.active, // This might be 0/1 or true/false
+        finalized: auction.finalized // This might be 0/1 or true/false
+      });
+      
+      await renderAuction(auction, auctionId, auctionsList);
     }
     
-    // Add all auctions to the DOM at once
-    auctionsList.appendChild(fragment);
     loadingElement.style.display = "none";
     
   } catch (error) {
@@ -3096,55 +3017,35 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('auction.js loaded and initialized');
 });
 
-// Optimized function to load auctions for ticker
+// Function to load active auctions for the mini-carousel
 async function loadAuctionsForCarousel() {
   try {
-    console.log("Loading auctions for ticker using Infura...");
+    console.log("Loading auctions for the mini-carousel...");
     
-    // Use Infura contract for faster queries if available
-    let contract = readOnlyInfuraAuctionContract || readOnlyAuctionContract;
-    
-    // If no contract is available, initialize one
-    if (!contract) {
-      console.log("Contract not initialized for ticker, initializing now...");
-      
-      // Try Infura first
-      if (!readOnlyInfuraProvider) {
-        try {
-          readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
-            name: "base",
-            chainId: 8453
-          });
-          readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
-          contract = readOnlyInfuraAuctionContract;
-          console.log("Infura contract initialized successfully for ticker");
-        } catch (error) {
-          console.warn("Could not initialize Infura, falling back to standard provider:", error);
-          // Fall back to standard provider
-          readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
-          readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
-          contract = readOnlyAuctionContract;
-          console.log("Standard contract initialized for ticker");
-        }
-      }
+    // Initialize contract if not available
+    if (!readOnlyAuctionContract || !readOnlyProvider) {
+      console.log("Contract not initialized for carousel, initializing now...");
+      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+      console.log("Contract initialized successfully for carousel");
     }
     
-    // 1. Get all active auctions count
-    const count = await contract.getActiveAuctionsCount();
-    console.log(`Active auctions for ticker: ${count.toString()}`);
+    // 1. Get all active auctions
+    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
+    console.log(`Active auctions for carousel: ${count.toString()}`);
     
     // If no auctions, return empty array
     if (count.toNumber() === 0) {
       return [];
     }
     
-    // 2. Limit to a maximum of 10 auctions for the ticker
+    // 2. Limit to a maximum of 10 auctions for the carousel
     const pageSize = Math.min(10, count.toNumber());
-    const ids = await contract.getActiveAuctions(0, pageSize);
+    const ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
     const auctionIds = ids.map(id => id.toNumber());
     
-    // 3. Get auction details in one batch call
-    const details = await contract.getManyAuctionDetails(auctionIds);
+    // 3. Get details of the auctions
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
     
     // 4. Filter only active auctions and sort by remaining time
     const now = Math.floor(Date.now() / 1000);
@@ -3161,8 +3062,8 @@ async function loadAuctionsForCarousel() {
       return aTime - bTime;
     });
     
-    // 5. Process data for ticker - use Promise.all to parallel process
-    const carouselDataPromises = activeAuctions.map(async (auction, index) => {
+    // 5. Process data for the carousel
+    const carouselData = await Promise.all(activeAuctions.map(async (auction, index) => {
       const auctionId = auctionIds[details.indexOf(auction)];
       
       const nftContract = auction.nftContract || ethers.constants.AddressZero;
@@ -3171,81 +3072,66 @@ async function loadAuctionsForCarousel() {
       const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
       const endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
       
-      // 6. Get NFT image - use caching for better performance
-      // Default placeholders
+      // 6. Get NFT image
       let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
       let nftName = `NFT #${tokenId}`;
       
-      try {
-        if (nftContract && nftContract !== ethers.constants.AddressZero) {
-          // Try to get image using contract read operations
-          const nftContractInstance = new ethers.Contract(
-            nftContract, 
-            ERC721_ABI, 
-            readOnlyInfuraProvider || readOnlyProvider
-          );
+      // Try to get NFT metadata
+      if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
+        try {
+          const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
           
-          // Get token URI with error handling
-          let tokenURI;
           try {
-            tokenURI = await nftContractInstance.tokenURI(tokenId);
-          } catch (err) {
-            console.warn(`Error fetching tokenURI for ticker auction #${auctionId}:`, err);
-          }
-          
-          if (tokenURI) {
-            // Handle IPFS URIs
-            if (tokenURI.startsWith('ipfs://')) {
-              const ipfsHash = tokenURI.replace('ipfs://', '');
-              const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
-                `https://ipfs.io/${ipfsHash}` : 
-                `https://ipfs.io/ipfs/${ipfsHash}`;
+            const tokenURI = await nftContractInstance.tokenURI(tokenId);
+            
+            if (tokenURI) {
+              let metadata = null;
               
-              try {
-                const response = await fetch(ipfsUrl);
-                const metadata = await response.json();
+              // Handle IPFS URLs
+              if (tokenURI.startsWith('ipfs://')) {
+                const ipfsHash = tokenURI.replace('ipfs://', '');
+                const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
+                  `https://ipfs.io/${ipfsHash}` : 
+                  `https://ipfs.io/ipfs/${ipfsHash}`;
                 
-                if (metadata) {
-                  if (metadata.name) {
-                    nftName = metadata.name;
-                  }
-                  
-                  if (metadata.image) {
-                    if (metadata.image.startsWith('ipfs://')) {
-                      const imageHash = metadata.image.replace('ipfs://', '');
-                      imageUrl = imageHash.startsWith('ipfs/') ? 
-                        `https://ipfs.io/${imageHash}` : 
-                        `https://ipfs.io/ipfs/${imageHash}`;
-                    } else {
-                      imageUrl = metadata.image;
-                    }
-                  }
+                try {
+                  const response = await fetch(ipfsUrl);
+                  metadata = await response.json();
+                } catch (error) {
+                  console.warn("Error getting metadata from IPFS for carousel:", error);
                 }
-              } catch (error) {
-                console.warn("Error getting IPFS metadata for ticker:", error);
+              } else if (tokenURI.startsWith('http')) {
+                try {
+                  const response = await fetch(tokenURI);
+                  metadata = await response.json();
+                } catch (error) {
+                  console.warn("Error getting HTTP metadata for carousel:", error);
+                }
               }
-            } else if (tokenURI.startsWith('http')) {
-              try {
-                const response = await fetch(tokenURI);
-                const metadata = await response.json();
+              
+              if (metadata) {
+                if (metadata.name) {
+                  nftName = metadata.name;
+                }
                 
-                if (metadata) {
-                  if (metadata.name) {
-                    nftName = metadata.name;
-                  }
-                  
-                  if (metadata.image) {
+                if (metadata.image) {
+                  if (metadata.image.startsWith('ipfs://')) {
+                    const imageHash = metadata.image.replace('ipfs://', '');
+                    imageUrl = imageHash.startsWith('ipfs/') ? 
+                      `https://ipfs.io/${imageHash}` : 
+                      `https://ipfs.io/ipfs/${imageHash}`;
+                  } else {
                     imageUrl = metadata.image;
                   }
                 }
-              } catch (error) {
-                console.warn("Error getting HTTP metadata for ticker:", error);
               }
             }
+          } catch (err) {
+            console.warn(`Error fetching tokenURI for carousel:`, err);
           }
+        } catch (error) {
+          console.warn(`Error loading NFT image for carousel:`, error);
         }
-      } catch (error) {
-        console.warn(`Error loading NFT image for ticker:`, error);
       }
       
       // 7. Calculate price to display (highest bid or reserve price)
@@ -3266,74 +3152,40 @@ async function loadAuctionsForCarousel() {
         timeRemaining,
         formattedTime
       };
-    });
+    }));
     
-    // Wait for all promises to resolve
-    const carouselData = await Promise.all(carouselDataPromises);
-    
-    console.log("Ticker data prepared:", carouselData);
+    console.log("Carousel data prepared:", carouselData);
     return carouselData;
     
   } catch (error) {
-    console.error("Error loading auctions for ticker:", error);
+    console.error("Error loading auctions for carousel:", error);
     return [];
   }
 }
 
-// Function to update the ticker display
+// Function to update the carousel
 function updateAuctionCarousel() {
-  // Añadir CSS para ralentizar la animación del carousel
-  const styleElement = document.createElement('style');
-  styleElement.id = 'carousel-animation-style';
-  
-  // Solo añadir el estilo si no existe ya
-  if (!document.getElementById('carousel-animation-style')) {
-    styleElement.textContent = `
-      @keyframes ticker {
-        0% {
-          transform: translateX(0);
-        }
-        100% {
-          transform: translateX(-100%);
-        }
-      }
-      
-      .ticker-content {
-        display: inline-block;
-        white-space: nowrap;
-        /* Doble duración para reducir velocidad a la mitad */
-        animation: ticker 30s linear infinite !important;
-      }
-      
-      /* Pausar animación al pasar el ratón */
-      .ticker-container:hover .ticker-content {
-        animation-play-state: paused !important;
-      }
-    `;
-    document.head.appendChild(styleElement);
-  }
-
   loadAuctionsForCarousel().then(auctions => {
-    const tickerContainer = document.getElementById('auction-carousel-items');
-    if (!tickerContainer) {
-      console.warn("Ticker container not found");
+    const carouselContainer = document.getElementById('auction-carousel-items');
+    if (!carouselContainer) {
+      console.warn("Carousel container not found");
       return;
     }
     
     if (auctions.length === 0) {
-      tickerContainer.innerHTML = `
-        <div class="ticker-item">
+      carouselContainer.innerHTML = `
+        <div class="carousel-item active">
           <div class="auction-carousel-card">
-            <p class="text-center">No active auctions</p>
+            <p class="text-center">No active auctions available</p>
           </div>
         </div>
       `;
       return;
     }
     
-    // Generate HTML for ticker items
-    const tickerItems = auctions.map(auction => `
-      <div class="ticker-item">
+    // Generate HTML for carousel items
+    const carouselItems = auctions.map((auction, index) => `
+      <div class="carousel-item ${index === 0 ? 'active' : ''}">
         <div class="auction-carousel-card" onclick="showAuctionDetails(${auction.auctionId})">
           <div class="carousel-img-container">
             <img src="${auction.imageUrl}" alt="${auction.nftName}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
@@ -3347,52 +3199,21 @@ function updateAuctionCarousel() {
       </div>
     `).join('');
     
-    // Duplicate the items to create a seamless loop effect
-    tickerContainer.innerHTML = tickerItems + tickerItems;
-    
-    // Asegurarnos de que el contenedor usa la clase correcta para la animación
-    const parentContainer = tickerContainer.parentElement;
-    if (parentContainer) {
-      parentContainer.classList.add('ticker-container');
-      tickerContainer.classList.add('ticker-content');
-    }
+    carouselContainer.innerHTML = carouselItems;
   });
 }
 
-// Initialize the ticker after page load
+// Initialize the mini-carousel after page load
 document.addEventListener('DOMContentLoaded', () => {
   // ... existing code ...
   
-  // Add ticker initialization to existing code
-  const tickerContainer = document.getElementById('auction-carousel-container');
-  if (tickerContainer) {
-    console.log("Initializing auctions ticker");
+  // Add carousel initialization to existing code
+  const carouselContainer = document.getElementById('auction-carousel-container');
+  if (carouselContainer) {
+    console.log("Initializing mini-carousel of auctions");
     updateAuctionCarousel();
     
-    // Update ticker every 60 seconds to keep content fresh
+    // Update carousel every 60 seconds
     setInterval(updateAuctionCarousel, 60000);
   }
-  
-  // Initialize contract immediately for better UX
-  if (!readOnlyAuctionContract && !readOnlyInfuraAuctionContract) {
-    checkConnection();
-  }
 });
-
-// Proveedor de solo lectura usando Infura para consultas más rápidas (solo para el carousel)
-const carouselInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
-  name: "base",
-  chainId: 8453
-});
-
-// Instancia de contrato de solo lectura para el carousel
-let carouselInfuraContract = null;
-
-// Inicializar contrato Infura para el carousel
-function initCarouselInfuraContract() {
-  if (!carouselInfuraContract) {
-    carouselInfuraContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, carouselInfuraProvider);
-    console.log("Inicializado contrato Infura para el carousel");
-  }
-  return carouselInfuraContract;
-}

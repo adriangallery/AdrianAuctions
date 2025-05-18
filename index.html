@@ -354,23 +354,22 @@
     .ticker-wrapper {
       display: inline-block;
       white-space: nowrap;
-      padding-right: 20px;
-      /* Configuración de animación para scroll infinito */
+      padding-right: 0;
+      /* Configuración para loop infinito perfecto */
       animation: ticker 90s linear infinite;
-      animation-iteration-count: infinite;
     }
     
     .ticker-wrapper:hover {
       animation-play-state: paused;
     }
     
-    /* Animación ticker infinito */
+    /* Animación ticker con loop perfecto */
     @keyframes ticker {
       0% {
         transform: translateX(100%);
       }
       100% {
-        transform: translateX(-200%);
+        transform: translateX(-100%);
       }
     }
     
@@ -494,7 +493,10 @@
           <!-- Los items del ticker se cargarán dinámicamente -->
           <div class="ticker-item">
             <div class="auction-carousel-card">
-              <p class="text-center">Loading auctions...</p>
+              <div class="d-flex align-items-center justify-content-center" style="min-width: 250px;">
+                <div class="loading-spinner me-2"></div>
+                <p class="mb-0">Loading active auctions...</p>
+              </div>
             </div>
           </div>
         </div>

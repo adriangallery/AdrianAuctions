@@ -88,6 +88,9 @@ let nftPageKey = null; // Almacenará la clave de paginación devuelta por Alche
 let nftPageSize = 20;
 let hasMoreNfts = true;
 
+// Variable para almacenar el último conjunto de IDs de subastas
+let lastAuctionIds = [];
+
 // DOM Elements
 document.addEventListener('DOMContentLoaded', () => {
   // Set up contract info
@@ -3025,7 +3028,7 @@ async function loadAuctionsForCarousel() {
     // Asegurar que el contrato está inicializado
     initReadOnlyContract();
     
-    // 1. Get all active auctions - limitar a máximo 3 para carga inicial ultra-rápida
+    // 1. Obtener todas las subastas activas - buscar hasta 5 para variar el contenido
     let count;
     try {
       count = await readOnlyAuctionContract.getActiveAuctionsCount();
@@ -3040,8 +3043,8 @@ async function loadAuctionsForCarousel() {
       return [];
     }
     
-    // 2. Limit to a maximum of 3 auctions for carga ultra-rápida
-    const pageSize = Math.min(3, count.toNumber());
+    // 2. Limitar a un máximo de 5 subastas para asegurar variedad
+    const pageSize = Math.min(5, count.toNumber());
     let ids, auctionIds;
     
     try {
@@ -3119,10 +3122,17 @@ async function loadAuctionsForCarousel() {
       };
     });
     
-    // 6. Load images in background AFTER returning basic data
-    setTimeout(() => {
-      loadCarouselImages(carouselData);
-    }, 100);
+    // 6. Load images immediately for the first auction to have something visible quickly
+    if (carouselData.length > 0) {
+      loadSingleAuctionImage(carouselData[0]).then(() => {
+        // After first auction is loaded, load the rest in background
+        setTimeout(() => {
+          for (let i = 1; i < carouselData.length; i++) {
+            loadSingleAuctionImage(carouselData[i]);
+          }
+        }, 100);
+      });
+    }
     
     console.log("Carousel data prepared:", carouselData);
     return carouselData;
@@ -3133,71 +3143,60 @@ async function loadAuctionsForCarousel() {
   }
 }
 
-// Nueva función para cargar imágenes en segundo plano
-async function loadCarouselImages(carouselData) {
+// Función para cargar la imagen de una sola subasta
+async function loadSingleAuctionImage(auction) {
+  if (!auction || !auction.nftContract || auction.nftContract === ethers.constants.AddressZero) {
+    return;
+  }
+  
   try {
-    for (const auction of carouselData) {
-      // Solo procesar si tenemos los datos necesarios
-      if (!auction.nftContract || auction.nftContract === ethers.constants.AddressZero) continue;
+    const nftContractInstance = new ethers.Contract(auction.nftContract, ERC721_ABI, readOnlyProvider);
+    const tokenURI = await nftContractInstance.tokenURI(auction.tokenId);
+    
+    if (!tokenURI) return;
+    
+    let metadata = null;
+    
+    // Handle IPFS URLs
+    if (tokenURI.startsWith('ipfs://')) {
+      const ipfsHash = tokenURI.replace('ipfs://', '');
+      const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
+        `https://ipfs.io/${ipfsHash}` : 
+        `https://ipfs.io/ipfs/${ipfsHash}`;
       
-      try {
-        const nftContractInstance = new ethers.Contract(auction.nftContract, ERC721_ABI, readOnlyProvider);
-        const tokenURI = await nftContractInstance.tokenURI(auction.tokenId);
-        
-        if (!tokenURI) continue;
-        
-        let metadata = null;
-        
-        // Handle IPFS URLs
-        if (tokenURI.startsWith('ipfs://')) {
-          const ipfsHash = tokenURI.replace('ipfs://', '');
-          const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
-            `https://ipfs.io/${ipfsHash}` : 
-            `https://ipfs.io/ipfs/${ipfsHash}`;
-          
-          try {
-            const response = await fetch(ipfsUrl);
-            metadata = await response.json();
-          } catch (error) {
-            console.warn("Error getting metadata from IPFS for carousel:", error);
-            continue;
-          }
-        } else if (tokenURI.startsWith('http')) {
-          try {
-            const response = await fetch(tokenURI);
-            metadata = await response.json();
-          } catch (error) {
-            console.warn("Error getting HTTP metadata for carousel:", error);
-            continue;
-          }
-        }
-        
-        if (!metadata) continue;
-        
-        if (metadata.name) {
-          auction.nftName = metadata.name;
-        }
-        
-        if (metadata.image) {
-          if (metadata.image.startsWith('ipfs://')) {
-            const imageHash = metadata.image.replace('ipfs://', '');
-            auction.imageUrl = imageHash.startsWith('ipfs/') ? 
-              `https://ipfs.io/${imageHash}` : 
-              `https://ipfs.io/ipfs/${imageHash}`;
-          } else {
-            auction.imageUrl = metadata.image;
-          }
-        }
-        
-        // Actualizar el carousel con la nueva imagen y nombre
-        updateCarouselItem(auction);
-        
-      } catch (error) {
-        console.warn(`Error loading image for auction #${auction.auctionId}:`, error);
+      const response = await fetch(ipfsUrl).catch(err => null);
+      if (response) {
+        metadata = await response.json().catch(err => null);
+      }
+    } else if (tokenURI.startsWith('http')) {
+      const response = await fetch(tokenURI).catch(err => null);
+      if (response) {
+        metadata = await response.json().catch(err => null);
       }
     }
+    
+    if (!metadata) return;
+    
+    if (metadata.name) {
+      auction.nftName = metadata.name;
+    }
+    
+    if (metadata.image) {
+      if (metadata.image.startsWith('ipfs://')) {
+        const imageHash = metadata.image.replace('ipfs://', '');
+        auction.imageUrl = imageHash.startsWith('ipfs/') ? 
+          `https://ipfs.io/${imageHash}` : 
+          `https://ipfs.io/ipfs/${imageHash}`;
+      } else {
+        auction.imageUrl = metadata.image;
+      }
+    }
+    
+    // Actualizar el carousel con la nueva imagen y nombre
+    updateCarouselItem(auction);
+    
   } catch (error) {
-    console.error("Error in background image loading:", error);
+    console.warn(`Error loading image for auction #${auction.auctionId}:`, error);
   }
 }
 
@@ -3242,8 +3241,8 @@ window.addEventListener('load', () => {
   // Cargar ticker inmediatamente
   updateAuctionCarousel();
   
-  // Actualizar el carousel periódicamente
-  setInterval(updateAuctionCarousel, 60000);
+  // Actualizar el carousel periódicamente cada 30 segundos para detectar nuevas subastas
+  setInterval(updateAuctionCarousel, 30000);
 });
 
 // Inicializar el carousel al cargar la página
@@ -3261,8 +3260,8 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Ticker carousel inicializado correctamente");
   }, 0);
   
-  // Actualizar el carousel periódicamente
-  setInterval(updateAuctionCarousel, 60000);
+  // Actualizar el carousel periódicamente cada 30 segundos
+  setInterval(updateAuctionCarousel, 30000);
 });
 
 // Function to update the carousel
@@ -3274,44 +3273,79 @@ function updateAuctionCarousel() {
       return;
     }
     
+    // Si no hay subastas, mostrar mensaje de carga
     if (auctions.length === 0) {
       tickerContainer.innerHTML = `
         <div class="ticker-item">
           <div class="auction-carousel-card">
-            <p class="text-center">No active auctions available</p>
+            <div class="d-flex align-items-center justify-content-center" style="min-width: 250px;">
+              <div class="loading-spinner me-2"></div>
+              <p class="mb-0">Loading active auctions...</p>
+            </div>
           </div>
         </div>
       `;
       return;
     }
     
-    // Generate HTML for ticker items
-    const tickerItems = auctions.map(auction => `
-      <div class="ticker-item">
-        <div class="auction-carousel-card" onclick="showAuctionDetails(${auction.auctionId})">
-          <div class="carousel-img-container">
-            <img src="${auction.imageUrl}" alt="${auction.nftName}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
-          </div>
-          <div class="carousel-info">
-            <div class="carousel-title">${auction.nftName}</div>
-            <div class="carousel-price">${auction.displayPrice}</div>
-            <div class="carousel-time">${auction.formattedTime}</div>
+    // Comprobar si hay nuevas subastas (comparando con el último conjunto)
+    const currentAuctionIds = auctions.map(a => a.auctionId);
+    const hasNewAuctions = !arraysEqual(currentAuctionIds, lastAuctionIds);
+    
+    // Si hay cambios o es la primera carga, actualizar el contenido
+    if (hasNewAuctions || lastAuctionIds.length === 0) {
+      console.log("Nuevas subastas detectadas, actualizando ticker");
+      
+      // Actualizar el último conjunto de IDs
+      lastAuctionIds = [...currentAuctionIds];
+      
+      // Generate HTML for ticker items
+      const tickerItems = auctions.map(auction => `
+        <div class="ticker-item">
+          <div class="auction-carousel-card" onclick="showAuctionDetails(${auction.auctionId})">
+            <div class="carousel-img-container">
+              <img src="${auction.imageUrl}" alt="${auction.nftName}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+            </div>
+            <div class="carousel-info">
+              <div class="carousel-title">${auction.nftName}</div>
+              <div class="carousel-price">${auction.displayPrice}</div>
+              <div class="carousel-time">${auction.formattedTime}</div>
+            </div>
           </div>
         </div>
-      </div>
-    `).join('');
+      `).join('');
+      
+      // Clave para un loop perfecto: repetir el conjunto de elementos exactamente 2 veces
+      // Esto garantiza que cuando termine el primer conjunto, el segundo ya estará posicionado
+      // para crear la ilusión de un scroll infinito
+      tickerContainer.innerHTML = tickerItems + tickerItems;
+      
+      // Reiniciar la animación para que el ticker comience nuevamente desde el principio
+      // pero solo si ya estaba iniciado previamente
+      if (lastAuctionIds.length > 0) {
+        tickerContainer.style.animation = 'none';
+        // Truco para forzar un reflow y reiniciar la animación correctamente
+        void tickerContainer.offsetWidth;
+        tickerContainer.style.animation = null;
+      }
+    } else {
+      console.log("No hay nuevas subastas, manteniendo el ticker actual");
+    }
     
-    // Duplicar los items múltiples veces para asegurar scroll infinito
-    tickerContainer.innerHTML = tickerItems + tickerItems + tickerItems + tickerItems;
-    
-    // Asegurar que el ticker se muestre incluso si no está conectada la wallet
+    // Asegurar que el ticker sea visible incluso si la wallet no está conectada
     const appContent = document.getElementById('app-content');
     const carouselContainer = document.getElementById('auction-carousel-container');
     
-    // Asegurar que el carousel sea visible aunque la app esté oculta
     if (carouselContainer && carouselContainer.parentNode && appContent && appContent.style.display === 'none') {
-      // Asegurar que el carousel es visible independientemente del estado de la app
       carouselContainer.style.display = 'block';
     }
   });
+}
+
+// Comparar si dos arrays tienen los mismos elementos
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false;
+  const sortedA = [...a].sort();
+  const sortedB = [...b].sort();
+  return sortedA.every((val, idx) => val === sortedB[idx]);
 }

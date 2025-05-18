@@ -3011,3 +3011,201 @@ document.addEventListener('DOMContentLoaded', function() {
   window.dispatchEvent(new Event('auctionJsLoaded'));
   console.log('auction.js loaded and initialized');
 });
+
+// Función para cargar las subastas activas para el mini-carrusel
+async function loadAuctionsForCarousel() {
+  try {
+    console.log("Cargando subastas para el mini-carrusel...");
+    
+    if (!readOnlyAuctionContract) {
+      console.warn("Contrato no inicializado para carrusel");
+      return [];
+    }
+    
+    // 1. Obtener todas las subastas activas
+    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
+    console.log(`Subastas activas para carrusel: ${count.toString()}`);
+    
+    // Si no hay subastas, devolver array vacío
+    if (count.toNumber() === 0) {
+      return [];
+    }
+    
+    // 2. Limitar a un máximo de 10 subastas para el carrusel
+    const pageSize = Math.min(10, count.toNumber());
+    const ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
+    const auctionIds = ids.map(id => id.toNumber());
+    
+    // 3. Obtener detalles de las subastas
+    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    
+    // 4. Filtrar solo subastas activas y ordenar por tiempo restante
+    const now = Math.floor(Date.now() / 1000);
+    const activeAuctions = details.filter((auction, index) => {
+      const isActive = auction.active === true || auction.active === 1;
+      const endTime = auction.endTime ? Number(auction.endTime.toString()) : 0;
+      return isActive && endTime > now;
+    });
+    
+    // Ordenar por tiempo restante (ascendente)
+    activeAuctions.sort((a, b) => {
+      const aTime = a.endTime ? Number(a.endTime.toString()) : 0;
+      const bTime = b.endTime ? Number(b.endTime.toString()) : 0;
+      return aTime - bTime;
+    });
+    
+    // 5. Procesar datos para el carrusel
+    const carouselData = await Promise.all(activeAuctions.map(async (auction, index) => {
+      const auctionId = auctionIds[details.indexOf(auction)];
+      
+      const nftContract = auction.nftContract || ethers.constants.AddressZero;
+      const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+      const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+      const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+      const endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+      
+      // 6. Obtener imagen del NFT
+      let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
+      let nftName = `NFT #${tokenId}`;
+      
+      // Intentar obtener metadata del NFT
+      if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
+        try {
+          const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
+          
+          try {
+            const tokenURI = await nftContractInstance.tokenURI(tokenId);
+            
+            if (tokenURI) {
+              let metadata = null;
+              
+              // Manejar URLs de IPFS
+              if (tokenURI.startsWith('ipfs://')) {
+                const ipfsHash = tokenURI.replace('ipfs://', '');
+                const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
+                  `https://ipfs.io/${ipfsHash}` : 
+                  `https://ipfs.io/ipfs/${ipfsHash}`;
+                
+                try {
+                  const response = await fetch(ipfsUrl);
+                  metadata = await response.json();
+                } catch (error) {
+                  console.warn("Error obteniendo metadata desde IPFS para carrusel:", error);
+                }
+              } else if (tokenURI.startsWith('http')) {
+                try {
+                  const response = await fetch(tokenURI);
+                  metadata = await response.json();
+                } catch (error) {
+                  console.warn("Error obteniendo metadata HTTP para carrusel:", error);
+                }
+              }
+              
+              if (metadata) {
+                if (metadata.name) {
+                  nftName = metadata.name;
+                }
+                
+                if (metadata.image) {
+                  if (metadata.image.startsWith('ipfs://')) {
+                    const imageHash = metadata.image.replace('ipfs://', '');
+                    imageUrl = imageHash.startsWith('ipfs/') ? 
+                      `https://ipfs.io/${imageHash}` : 
+                      `https://ipfs.io/ipfs/${imageHash}`;
+                  } else {
+                    imageUrl = metadata.image;
+                  }
+                }
+              }
+            }
+          } catch (err) {
+            console.warn(`Error fetching tokenURI para carrusel:`, err);
+          }
+        } catch (error) {
+          console.warn(`Error al cargar imagen del NFT para carrusel:`, error);
+        }
+      }
+      
+      // 7. Calcular el precio a mostrar (puja más alta o precio de reserva)
+      const displayPrice = highestBid.gt(0) ? 
+        `${formatEther(highestBid)} ADRIAN` : 
+        `${formatEther(reservePrice)} ADRIAN`;
+      
+      // 8. Calcular tiempo restante
+      const timeRemaining = endTime - now;
+      const formattedTime = formatTimeRemaining(endTime);
+      
+      // 9. Devolver objeto con datos para el carrusel
+      return {
+        auctionId,
+        nftName,
+        imageUrl,
+        displayPrice,
+        timeRemaining,
+        formattedTime
+      };
+    }));
+    
+    console.log("Datos de carrusel preparados:", carouselData);
+    return carouselData;
+    
+  } catch (error) {
+    console.error("Error cargando subastas para el carrusel:", error);
+    return [];
+  }
+}
+
+// Función para actualizar el carrusel
+function updateAuctionCarousel() {
+  loadAuctionsForCarousel().then(auctions => {
+    const carouselContainer = document.getElementById('auction-carousel-items');
+    if (!carouselContainer) {
+      console.warn("Contenedor de carrusel no encontrado");
+      return;
+    }
+    
+    if (auctions.length === 0) {
+      carouselContainer.innerHTML = `
+        <div class="carousel-item active">
+          <div class="auction-carousel-card">
+            <p class="text-center">No hay subastas activas</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Generar HTML para los elementos del carrusel
+    const carouselItems = auctions.map((auction, index) => `
+      <div class="carousel-item ${index === 0 ? 'active' : ''}">
+        <div class="auction-carousel-card" onclick="showAuctionDetails(${auction.auctionId})">
+          <div class="carousel-img-container">
+            <img src="${auction.imageUrl}" alt="${auction.nftName}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
+          </div>
+          <div class="carousel-info">
+            <div class="carousel-title">${auction.nftName}</div>
+            <div class="carousel-price">${auction.displayPrice}</div>
+            <div class="carousel-time">${auction.formattedTime}</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+    
+    carouselContainer.innerHTML = carouselItems;
+  });
+}
+
+// Inicializar el mini-carrusel después de la carga de la página
+document.addEventListener('DOMContentLoaded', () => {
+  // ... existing code ...
+  
+  // Añadir inicialización del carrusel al código existente
+  const carouselContainer = document.getElementById('auction-carousel-container');
+  if (carouselContainer) {
+    console.log("Inicializando mini-carrusel de subastas");
+    updateAuctionCarousel();
+    
+    // Actualizar el carrusel cada 60 segundos
+    setInterval(updateAuctionCarousel, 60000);
+  }
+});

@@ -329,6 +329,143 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    /* Estilos para el mini-carrusel de subastas */
+    .sticky-carousel {
+      position: sticky;
+      top: 42px; /* Justo debajo del menú sticky */
+      z-index: 999;
+      background-color: var(--screen-bg);
+      margin-top: 0;
+      padding: 8px 0;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-bottom: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+      width: 100%;
+      overflow: hidden;
+    }
+    
+    .carousel-inner {
+      display: flex;
+      transition: all 0.3s ease;
+    }
+    
+    .carousel-item {
+      min-width: 100%;
+      display: none;
+    }
+    
+    .carousel-item.active {
+      display: block;
+    }
+    
+    .auction-carousel-card {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      padding: 5px 15px;
+      border-radius: 8px;
+      background-color: var(--card-bg);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: all 0.2s ease;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    
+    .auction-carousel-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    
+    .carousel-img-container {
+      width: 50px;
+      height: 50px;
+      min-width: 50px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-right: 10px;
+    }
+    
+    .carousel-img-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .carousel-info {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .carousel-title {
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.85rem;
+      margin-right: 10px;
+      flex: 1;
+    }
+    
+    .carousel-price {
+      color: var(--accent-purple);
+      font-weight: bold;
+      font-size: 0.8rem;
+      margin-right: 10px;
+      white-space: nowrap;
+    }
+    
+    .carousel-time {
+      color: #666;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+    
+    /* Personalizar controles del carrusel */
+    .carousel-control-prev, .carousel-control-next {
+      width: 8%;
+      opacity: 0.9;
+    }
+    
+    .carousel-control-prev-icon, .carousel-control-next-icon {
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 50%;
+      padding: 10px;
+    }
+    
+    /* Adaptación mobile */
+    @media (max-width: 576px) {
+      .sticky-carousel {
+        top: 36px; /* Ajustar para el menú más pequeño en mobile */
+      }
+      
+      .auction-carousel-card {
+        padding: 5px 10px;
+      }
+      
+      .carousel-img-container {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+      }
+      
+      .carousel-title {
+        font-size: 0.75rem;
+        max-width: 100px;
+      }
+      
+      .carousel-price {
+        font-size: 0.7rem;
+      }
+      
+      .carousel-time {
+        font-size: 0.65rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -357,7 +494,7 @@
     <!-- Main Application (hidden until wallet connect) -->
     <div id="app-content" style="display: none;">
       <!-- Tabs Navigation -->
-      <ul class="nav nav-tabs mb-4 sticky-nav" id="auctionTabs" role="tablist">
+      <ul class="nav nav-tabs mb-0 sticky-nav" id="auctionTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="explore-tab" data-bs-toggle="tab" data-bs-target="#explore" type="button" role="tab">Explore Auctions</button>
         </li>
@@ -371,6 +508,28 @@
           <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Create Auction</button>
         </li>
       </ul>
+      
+      <!-- Mini Carousel para subastas activas -->
+      <div id="auction-carousel-container" class="sticky-carousel mb-3">
+        <div id="auction-carousel" class="carousel slide" data-bs-ride="carousel">
+          <div class="carousel-inner" id="auction-carousel-items">
+            <!-- Los items del carrusel se cargarán dinámicamente -->
+            <div class="carousel-item active">
+              <div class="auction-carousel-card">
+                <p class="text-center">Cargando subastas...</p>
+              </div>
+            </div>
+          </div>
+          <button class="carousel-control-prev" type="button" data-bs-target="#auction-carousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#auction-carousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
+        </div>
+      </div>
       
       <div class="tab-content content-padding-top" id="auctionTabsContent">
         <!-- Tab: Explore Auctions -->

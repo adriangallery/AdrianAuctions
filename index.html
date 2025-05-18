@@ -348,21 +348,23 @@
       white-space: nowrap;
       position: relative;
       width: 100%;
+      background-color: var(--screen-bg);
     }
     
     .ticker-wrapper {
       display: inline-block;
       white-space: nowrap;
       padding-right: 20px;
-      /* Velocidad muy reducida para mejor lectura (90s) */
+      /* Configuración de animación para scroll infinito */
       animation: ticker 90s linear infinite;
+      animation-iteration-count: infinite;
     }
     
     .ticker-wrapper:hover {
       animation-play-state: paused;
     }
     
-    /* Animación ticker */
+    /* Animación ticker infinito */
     @keyframes ticker {
       0% {
         transform: translateX(100%);
@@ -485,6 +487,20 @@
       <p>Discover, bid and create NFT auctions on Base Network</p>
     </header>
     
+    <!-- Ticker horizontal para subastas activas - MOVIDO AL INICIO -->
+    <div id="auction-carousel-container" class="sticky-carousel mb-3">
+      <div class="ticker-container">
+        <div id="auction-carousel-items" class="ticker-wrapper">
+          <!-- Los items del ticker se cargarán dinámicamente -->
+          <div class="ticker-item">
+            <div class="auction-carousel-card">
+              <p class="text-center">Loading auctions...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <!-- Connect Wallet Section -->
     <div id="connect-section" class="text-center mb-4">
       <button id="connectBtn" class="btn-connect">Connect Wallet</button>
@@ -517,20 +533,6 @@
           <button class="nav-link" id="create-tab" data-bs-toggle="tab" data-bs-target="#create" type="button" role="tab">Create Auction</button>
         </li>
       </ul>
-      
-      <!-- Ticker horizontal para subastas activas -->
-      <div id="auction-carousel-container" class="sticky-carousel mb-3">
-        <div class="ticker-container">
-          <div id="auction-carousel-items" class="ticker-wrapper">
-            <!-- Los items del ticker se cargarán dinámicamente -->
-            <div class="ticker-item">
-              <div class="auction-carousel-card">
-                <p class="text-center">Loading auctions...</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
       
       <div class="tab-content content-padding-top" id="auctionTabsContent">
         <!-- Tab: Explore Auctions -->

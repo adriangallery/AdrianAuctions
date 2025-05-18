@@ -3022,70 +3022,91 @@ async function loadAuctionsForCarousel() {
   try {
     console.log("Loading auctions for the mini-carousel...");
     
-    // Initialize contract if not available - hacer esto más rápido
-    if (!readOnlyAuctionContract || !readOnlyProvider) {
-      console.log("Contract not initialized for carousel, initializing now...");
-      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
-      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
-      console.log("Contract initialized successfully for carousel");
+    // Asegurar que el contrato está inicializado
+    initReadOnlyContract();
+    
+    // 1. Get all active auctions - limitar a máximo 3 para carga inicial ultra-rápida
+    let count;
+    try {
+      count = await readOnlyAuctionContract.getActiveAuctionsCount();
+      console.log(`Active auctions for carousel: ${count.toString()}`);
+    } catch (error) {
+      console.error("Error al obtener número de subastas:", error);
+      return []; // Retornar array vacío en caso de error
     }
     
-    // 1. Get all active auctions - limitar a máximo 5 para carga inicial rápida
-    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
-    console.log(`Active auctions for carousel: ${count.toString()}`);
-    
-    // If no auctions, return empty array
-    if (count.toNumber() === 0) {
+    // Si no hay subastas, retornar array vacío
+    if (!count || count.toNumber() === 0) {
       return [];
     }
     
-    // 2. Limit to a maximum of 5 auctions for carga inicial rápida
-    const pageSize = Math.min(5, count.toNumber());
-    const ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
-    const auctionIds = ids.map(id => id.toNumber());
+    // 2. Limit to a maximum of 3 auctions for carga ultra-rápida
+    const pageSize = Math.min(3, count.toNumber());
+    let ids, auctionIds;
+    
+    try {
+      ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
+      auctionIds = ids.map(id => id.toNumber());
+    } catch (error) {
+      console.error("Error al obtener IDs de subastas:", error);
+      return []; // Retornar array vacío en caso de error
+    }
+    
+    if (!ids || ids.length === 0) {
+      return [];
+    }
     
     // 3. Get details of the auctions
-    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    let details;
+    try {
+      details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    } catch (error) {
+      console.error("Error al obtener detalles de subastas:", error);
+      return []; // Retornar array vacío en caso de error
+    }
     
-    // 4. Filter only active auctions and sort by remaining time
+    // 4. Process only basic information for speed
     const now = Math.floor(Date.now() / 1000);
+    
+    // Filtrar solo aquellas subastas que están activas
     const activeAuctions = details.filter((auction, index) => {
+      // Si falta información crucial, filtrar
+      if (!auction || !auction.endTime) return false;
+      
       const isActive = auction.active === true || auction.active === 1;
       const endTime = auction.endTime ? Number(auction.endTime.toString()) : 0;
       return isActive && endTime > now;
     });
     
-    // Sort by remaining time (ascending)
-    activeAuctions.sort((a, b) => {
-      const aTime = a.endTime ? Number(a.endTime.toString()) : 0;
-      const bTime = b.endTime ? Number(b.endTime.toString()) : 0;
-      return aTime - bTime;
-    });
+    if (activeAuctions.length === 0) {
+      return [];
+    }
     
-    // 5. Process data for the carousel - versión optimizada
-    const carouselData = await Promise.all(activeAuctions.map(async (auction, index) => {
+    // 5. Create basic auction objects with minimal required info - optimizado para velocidad
+    const carouselData = activeAuctions.map((auction, index) => {
       const auctionId = auctionIds[details.indexOf(auction)];
       
+      // Información básica a mostrar inicialmente
       const nftContract = auction.nftContract || ethers.constants.AddressZero;
-      const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+      const tokenId = auction.tokenId ? auction.tokenId.toString() : '0';
       const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
       const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
       const endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
       
-      // 6. Get NFT image - usar una imagen placeholder inicialmente para acelerar carga
-      let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
-      let nftName = `NFT #${tokenId}`;
+      // Placeholder image for initial fast load
+      const imageUrl = 'https://placehold.co/400x400?text=Loading...';
+      const nftName = `NFT #${tokenId.toString()}`;
       
-      // 7. Calculate price to display (highest bid or reserve price)
+      // Precio a mostrar (si hay oferta, mostrar esa, sino mostrar precio reserva)
       const displayPrice = highestBid.gt(0) ? 
         `${formatEther(highestBid)} ADRIAN` : 
         `${formatEther(reservePrice)} ADRIAN`;
       
-      // 8. Calculate remaining time
+      // Tiempo restante
       const timeRemaining = endTime - now;
       const formattedTime = formatTimeRemaining(endTime);
       
-      // 9. Return object with carousel data
+      // Retornar objeto con datos básicos
       return {
         auctionId,
         nftName,
@@ -3096,15 +3117,14 @@ async function loadAuctionsForCarousel() {
         nftContract,
         tokenId
       };
-    }));
+    });
     
-    console.log("Carousel data prepared:", carouselData);
-    
-    // Iniciar carga de imágenes en segundo plano después de mostrar el carousel
+    // 6. Load images in background AFTER returning basic data
     setTimeout(() => {
       loadCarouselImages(carouselData);
-    }, 500);
+    }, 100);
     
+    console.log("Carousel data prepared:", carouselData);
     return carouselData;
     
   } catch (error) {
@@ -3202,13 +3222,41 @@ function updateCarouselItem(auction) {
   }
 }
 
+// Inicializar el contrato para lectura (independiente de la wallet)
+function initReadOnlyContract() {
+  if (!readOnlyProvider || !readOnlyAuctionContract) {
+    console.log("Inicializando contrato para lectura...");
+    readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+    console.log("Contrato inicializado para lectura.");
+  }
+}
+
+// Iniciar el ticker carousel inmediatamente al cargar la página
+window.addEventListener('load', () => {
+  console.log("Iniciando carga del ticker carousel...");
+  
+  // Inicializar el contrato para lectura sin esperar la conexión de la wallet
+  initReadOnlyContract();
+  
+  // Cargar ticker inmediatamente
+  updateAuctionCarousel();
+  
+  // Actualizar el carousel periódicamente
+  setInterval(updateAuctionCarousel, 60000);
+});
+
 // Inicializar el carousel al cargar la página
 document.addEventListener('DOMContentLoaded', () => {
   // Inicializar el carousel inmediatamente con alta prioridad
-  console.log("Iniciando carga del ticker carousel...");
+  console.log("Iniciando carga del ticker carousel (DOM Content)...");
   
   // Ejecutar inmediatamente, sin esperar otras operaciones
   setTimeout(() => {
+    // Inicializar el contrato para lectura sin esperar la conexión de la wallet
+    initReadOnlyContract();
+    
+    // Actualizar carousel
     updateAuctionCarousel();
     console.log("Ticker carousel inicializado correctamente");
   }, 0);
@@ -3253,7 +3301,17 @@ function updateAuctionCarousel() {
       </div>
     `).join('');
     
-    // Duplicate items to create a seamless loop
-    tickerContainer.innerHTML = tickerItems + tickerItems;
+    // Duplicar los items múltiples veces para asegurar scroll infinito
+    tickerContainer.innerHTML = tickerItems + tickerItems + tickerItems + tickerItems;
+    
+    // Asegurar que el ticker se muestre incluso si no está conectada la wallet
+    const appContent = document.getElementById('app-content');
+    const carouselContainer = document.getElementById('auction-carousel-container');
+    
+    // Asegurar que el carousel sea visible aunque la app esté oculta
+    if (carouselContainer && carouselContainer.parentNode && appContent && appContent.style.display === 'none') {
+      // Asegurar que el carousel es visible independientemente del estado de la app
+      carouselContainer.style.display = 'block';
+    }
   });
 }

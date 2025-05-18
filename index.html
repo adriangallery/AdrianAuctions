@@ -330,45 +330,52 @@
       100% { transform: rotate(360deg); }
     }
     
-    /* Styles for the auction ticker */
+    /* Estilos para el mini-carrusel de subastas */
     .sticky-carousel {
       position: sticky;
-      top: 42px; /* Just below the sticky menu */
+      top: 44px;
       z-index: 999;
       background-color: var(--screen-bg);
-      margin-top: 0;
       padding: 8px 0;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      border-bottom: 1px solid var(--card-border);
-      width: 100%;
       overflow: hidden;
+      width: 100%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     }
     
-    .ticker-wrap {
-      width: 100%;
+    /* Ticker container */
+    .ticker-container {
       overflow: hidden;
       white-space: nowrap;
-      box-sizing: border-box;
+      position: relative;
+      width: 100%;
     }
     
-    .ticker-content {
+    .ticker-wrapper {
       display: inline-block;
       white-space: nowrap;
-      animation: ticker 30s linear infinite;
+      padding-right: 20px;
+      /* 20% más rápido que antes (era 30s, ahora 24s) */
+      animation: ticker 24s linear infinite;
     }
     
-    .ticker-content:hover {
+    .ticker-wrapper:hover {
       animation-play-state: paused;
     }
     
+    /* Animación ticker */
     @keyframes ticker {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-100%); }
+      0% {
+        transform: translateX(100%);
+      }
+      100% {
+        transform: translateX(-200%);
+      }
     }
     
     .ticker-item {
       display: inline-block;
-      margin-right: 20px;
+      margin-right: 15px;
+      vertical-align: top;
     }
     
     .auction-carousel-card {
@@ -379,13 +386,9 @@
       border-radius: 8px;
       background-color: var(--card-bg);
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-      transition: all 0.2s ease;
-    }
-    
-    .auction-carousel-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-      background-color: #f8f9fa;
+      transition: all 0.3s ease;
+      min-width: 260px;
+      max-width: 300px;
     }
     
     .carousel-img-container {
@@ -404,19 +407,22 @@
     }
     
     .carousel-info {
-      display: flex;
-      white-space: nowrap;
+      flex: 1;
       overflow: hidden;
+      display: flex;
+      flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
     }
     
     .carousel-title {
       font-weight: bold;
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 0.85rem;
       margin-right: 10px;
-      max-width: 150px;
+      flex: 1;
     }
     
     .carousel-price {
@@ -424,11 +430,13 @@
       font-weight: bold;
       font-size: 0.8rem;
       margin-right: 10px;
+      white-space: nowrap;
     }
     
     .carousel-time {
       color: #666;
       font-size: 0.75rem;
+      white-space: nowrap;
     }
     
     /* Mobile adaptation */
@@ -439,6 +447,8 @@
       
       .auction-carousel-card {
         padding: 5px 10px;
+        min-width: 210px;
+        max-width: 260px;
       }
       
       .carousel-img-container {
@@ -458,6 +468,11 @@
       
       .carousel-time {
         font-size: 0.65rem;
+      }
+      
+      /* Ticker más rápido en móvil */
+      .ticker-wrapper {
+        animation: ticker 20s linear infinite;
       }
     }
   </style>
@@ -503,14 +518,14 @@
         </li>
       </ul>
       
-      <!-- Ticker style carousel for active auctions -->
+      <!-- Ticker horizontal para subastas activas -->
       <div id="auction-carousel-container" class="sticky-carousel mb-3">
-        <div class="ticker-wrap">
-          <div id="auction-carousel-items" class="ticker-content">
-            <!-- Ticker items will be loaded dynamically -->
+        <div class="ticker-container">
+          <div id="auction-carousel-items" class="ticker-wrapper">
+            <!-- Los items del ticker se cargarán dinámicamente -->
             <div class="ticker-item">
               <div class="auction-carousel-card">
-                <p class="text-center">Cargando subastas...</p>
+                <p class="text-center">Loading auctions...</p>
               </div>
             </div>
           </div>
@@ -720,15 +735,17 @@
         });
       }
       
-      // Add pause on hover functionality for ticker
-      const ticker = document.querySelector('.ticker');
-      if (ticker) {
-        ticker.addEventListener('mouseenter', function() {
-          ticker.style.animationPlayState = 'paused';
+      // Add pause on hover functionality for carousel
+      const carousel = document.getElementById('auction-carousel');
+      if (carousel) {
+        carousel.addEventListener('mouseenter', function() {
+          // Pause the carousel
+          bootstrap.Carousel.getInstance(carousel).pause();
         });
         
-        ticker.addEventListener('mouseleave', function() {
-          ticker.style.animationPlayState = 'running';
+        carousel.addEventListener('mouseleave', function() {
+          // Resume the carousel
+          bootstrap.Carousel.getInstance(carousel).cycle();
         });
       }
     });

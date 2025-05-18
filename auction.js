@@ -3166,15 +3166,15 @@ async function loadAuctionsForCarousel() {
 // Function to update the carousel
 function updateAuctionCarousel() {
   loadAuctionsForCarousel().then(auctions => {
-    const carouselContainer = document.getElementById('auction-carousel-items');
-    if (!carouselContainer) {
-      console.warn("Carousel container not found");
+    const tickerContainer = document.getElementById('auction-carousel-items');
+    if (!tickerContainer) {
+      console.warn("Ticker container not found");
       return;
     }
     
     if (auctions.length === 0) {
-      carouselContainer.innerHTML = `
-        <div class="carousel-item active">
+      tickerContainer.innerHTML = `
+        <div class="ticker-item">
           <div class="auction-carousel-card">
             <p class="text-center">No active auctions available</p>
           </div>
@@ -3183,9 +3183,9 @@ function updateAuctionCarousel() {
       return;
     }
     
-    // Generate HTML for carousel items
-    const carouselItems = auctions.map((auction, index) => `
-      <div class="carousel-item ${index === 0 ? 'active' : ''}">
+    // Generate HTML for ticker items
+    const tickerItems = auctions.map(auction => `
+      <div class="ticker-item">
         <div class="auction-carousel-card" onclick="showAuctionDetails(${auction.auctionId})">
           <div class="carousel-img-container">
             <img src="${auction.imageUrl}" alt="${auction.nftName}" onerror="this.src='https://placehold.co/400x400?text=NFT+Image'">
@@ -3199,21 +3199,7 @@ function updateAuctionCarousel() {
       </div>
     `).join('');
     
-    carouselContainer.innerHTML = carouselItems;
+    // Duplicate items to create a seamless loop
+    tickerContainer.innerHTML = tickerItems + tickerItems;
   });
 }
-
-// Initialize the mini-carousel after page load
-document.addEventListener('DOMContentLoaded', () => {
-  // ... existing code ...
-  
-  // Add carousel initialization to existing code
-  const carouselContainer = document.getElementById('auction-carousel-container');
-  if (carouselContainer) {
-    console.log("Initializing mini-carousel of auctions");
-    updateAuctionCarousel();
-    
-    // Update carousel every 60 seconds
-    setInterval(updateAuctionCarousel, 60000);
-  }
-});

@@ -308,9 +308,19 @@ async function checkConnection() {
   }
   
   // Initialize read-only Infura contract even if user isn't connected
-  if (!readOnlyInfuraAuctionContract && readOnlyInfuraProvider) {
+  if (!readOnlyInfuraProvider) {
+    try {
+      readOnlyInfuraProvider = await initializeInfuraProvider();
+      if (readOnlyInfuraProvider) {
+        readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
+        console.log("Initialized read-only Infura contract during connection check");
+      }
+    } catch (error) {
+      console.warn("Could not initialize Infura during connection check:", error);
+    }
+  } else if (!readOnlyInfuraAuctionContract && readOnlyInfuraProvider) {
     readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
-    console.log("Initialized read-only Infura contract during connection check");
+    console.log("Initialized read-only Infura contract with existing provider");
   }
   
   // Initialize Alchemy for NFT retrieval regardless of connection
@@ -358,16 +368,13 @@ async function connectWallet() {
     
     // Initialize read-only providers for faster queries
     if (!readOnlyProvider) {
-      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL, { timeout: PROVIDER_TIMEOUT_MS });
     }
     
     // Use Infura provider if available, otherwise fall back to standard provider
     if (!readOnlyInfuraProvider) {
       try {
-        readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
-          name: "base",
-          chainId: 8453
-        });
+        readOnlyInfuraProvider = await initializeInfuraProvider();
         console.log("Infura provider initialized successfully on connect");
       } catch (error) {
         console.warn("Could not initialize Infura provider on connect:", error);
@@ -378,7 +385,7 @@ async function connectWallet() {
     readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
     
     // Initialize Infura contract if provider is available
-    if (readOnlyInfuraProvider) {
+    if (readOnlyInfuraProvider && !readOnlyInfuraAuctionContract) {
       readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
       console.log("Infura contract initialized successfully");
     }

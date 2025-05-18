@@ -351,18 +351,18 @@
       box-sizing: border-box;
     }
     
-    .ticker {
+    .ticker-content {
       display: inline-block;
       white-space: nowrap;
-      animation: ticker-move 60s linear infinite;
+      animation: ticker 30s linear infinite;
     }
     
-    .ticker:hover {
+    .ticker-content:hover {
       animation-play-state: paused;
     }
     
-    @keyframes ticker-move {
-      0% { transform: translateX(100%); }
+    @keyframes ticker {
+      0% { transform: translateX(0); }
       100% { transform: translateX(-100%); }
     }
     
@@ -506,11 +506,11 @@
       <!-- Ticker style carousel for active auctions -->
       <div id="auction-carousel-container" class="sticky-carousel mb-3">
         <div class="ticker-wrap">
-          <div id="auction-carousel-items" class="ticker">
+          <div id="auction-carousel-items" class="ticker-content">
             <!-- Ticker items will be loaded dynamically -->
             <div class="ticker-item">
               <div class="auction-carousel-card">
-                <p class="text-center">Loading auctions...</p>
+                <p class="text-center">Cargando subastas...</p>
               </div>
             </div>
           </div>

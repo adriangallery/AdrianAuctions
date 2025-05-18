@@ -330,7 +330,7 @@
       100% { transform: rotate(360deg); }
     }
     
-    /* Styles for the auction mini-carousel */
+    /* Styles for the auction ticker */
     .sticky-carousel {
       position: sticky;
       top: 42px; /* Just below the sticky menu */
@@ -340,23 +340,35 @@
       padding: 8px 0;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
       border-bottom: 1px solid var(--card-border);
-      transition: all 0.3s ease;
       width: 100%;
       overflow: hidden;
     }
     
-    .carousel-inner {
-      display: flex;
-      transition: transform 0.5s ease-in-out;
+    .ticker-wrap {
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      box-sizing: border-box;
     }
     
-    .carousel-item {
-      min-width: 100%;
-      display: none;
+    .ticker {
+      display: inline-block;
+      white-space: nowrap;
+      animation: ticker-move 30s linear infinite;
     }
     
-    .carousel-item.active {
-      display: block;
+    .ticker:hover {
+      animation-play-state: paused;
+    }
+    
+    @keyframes ticker-move {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(-100%); }
+    }
+    
+    .ticker-item {
+      display: inline-block;
+      margin-right: 20px;
     }
     
     .auction-carousel-card {
@@ -368,19 +380,12 @@
       background-color: var(--card-bg);
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
       transition: all 0.2s ease;
-      max-width: 100%;
-      margin: 0 auto;
     }
     
     .auction-carousel-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 3px 6px rgba(0,0,0,0.1);
       background-color: #f8f9fa;
-    }
-    
-    /* Carousel hover styles */
-    #auction-carousel:hover .carousel-inner {
-      animation-play-state: paused;
     }
     
     .carousel-img-container {
@@ -399,22 +404,19 @@
     }
     
     .carousel-info {
-      flex: 1;
-      overflow: hidden;
       display: flex;
-      flex-wrap: wrap;
+      white-space: nowrap;
+      overflow: hidden;
       align-items: center;
-      justify-content: space-between;
     }
     
     .carousel-title {
       font-weight: bold;
-      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       font-size: 0.85rem;
       margin-right: 10px;
-      flex: 1;
+      max-width: 150px;
     }
     
     .carousel-price {
@@ -422,13 +424,11 @@
       font-weight: bold;
       font-size: 0.8rem;
       margin-right: 10px;
-      white-space: nowrap;
     }
     
     .carousel-time {
       color: #666;
       font-size: 0.75rem;
-      white-space: nowrap;
     }
     
     /* Mobile adaptation */
@@ -503,18 +503,17 @@
         </li>
       </ul>
       
-      <!-- Mini Carousel for active auctions -->
+      <!-- Ticker style carousel for active auctions -->
       <div id="auction-carousel-container" class="sticky-carousel mb-3">
-        <div id="auction-carousel" class="carousel slide" data-bs-ride="carousel">
-          <div class="carousel-inner" id="auction-carousel-items">
-            <!-- Carousel items will be loaded dynamically -->
-            <div class="carousel-item active">
+        <div class="ticker-wrap">
+          <div id="auction-carousel-items" class="ticker">
+            <!-- Ticker items will be loaded dynamically -->
+            <div class="ticker-item">
               <div class="auction-carousel-card">
                 <p class="text-center">Loading auctions...</p>
               </div>
             </div>
           </div>
-          <!-- No navigation buttons for smoother experience -->
         </div>
       </div>
       
@@ -721,23 +720,15 @@
         });
       }
       
-      // Add pause on hover functionality for carousel
-      const carousel = document.getElementById('auction-carousel');
-      if (carousel) {
-        carousel.addEventListener('mouseenter', function() {
-          // Try to get instance, it might not be ready yet
-          const carouselInstance = bootstrap.Carousel.getInstance(carousel);
-          if (carouselInstance) {
-            carouselInstance.pause();
-          }
+      // Add pause on hover functionality for ticker
+      const ticker = document.querySelector('.ticker');
+      if (ticker) {
+        ticker.addEventListener('mouseenter', function() {
+          ticker.style.animationPlayState = 'paused';
         });
         
-        carousel.addEventListener('mouseleave', function() {
-          // Try to get instance, it might not be ready yet
-          const carouselInstance = bootstrap.Carousel.getInstance(carousel);
-          if (carouselInstance) {
-            carouselInstance.cycle();
-          }
+        ticker.addEventListener('mouseleave', function() {
+          ticker.style.animationPlayState = 'running';
         });
       }
     });

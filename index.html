@@ -354,8 +354,8 @@
       display: inline-block;
       white-space: nowrap;
       padding-right: 20px;
-      /* 20% más rápido que antes (era 30s, ahora 24s) */
-      animation: ticker 24s linear infinite;
+      /* Reducida la velocidad: ahora más lento (40s) */
+      animation: ticker 40s linear infinite;
     }
     
     .ticker-wrapper:hover {
@@ -470,9 +470,9 @@
         font-size: 0.65rem;
       }
       
-      /* Ticker más rápido en móvil */
+      /* Ticker más lento también en móvil */
       .ticker-wrapper {
-        animation: ticker 20s linear infinite;
+        animation: ticker 35s linear infinite;
       }
     }
   </style>

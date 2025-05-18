@@ -1341,7 +1341,11 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
     }
   } else if (isOwner && !isActive && isFinalized && 
             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
-    // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
+    // Mostrar botón de relist solo cuando:
+    // 1. El usuario es el dueño de la subasta
+    // 2. La subasta no está activa
+    // 3. La subasta está finalizada
+    // 4. La subasta no tuvo postor o no se alcanzó el precio de reserva
     actionButtons = `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
   }
   
@@ -2372,6 +2376,7 @@ async function relistAuction(auctionId, newReservePrice, durationHours) {
     const durationSeconds = durationHours * 3600;
     
     console.log("Parámetros convertidos:", {
+      auctionId: auctionId,
       reservePriceWei: reservePriceWei.toString(),
       durationSeconds
     });
@@ -2379,13 +2384,21 @@ async function relistAuction(auctionId, newReservePrice, durationHours) {
     showSuccess("Enviando transacción para volver a listar la subasta...");
     
     const contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+    
+    // Importante: relistAuction solo necesita estos parámetros ya que el NFT
+    // ya está en posesión del contrato y no necesita transferencia adicional
     console.log("Llamando a relistAuction con parámetros:", {
       auctionId,
       reservePriceWei: reservePriceWei.toString(),
       durationSeconds
     });
     
-    const tx = await contract.relistAuction(auctionId, reservePriceWei, durationSeconds);
+    const tx = await contract.relistAuction(
+      auctionId,               // ID de la subasta original 
+      reservePriceWei,         // Nuevo precio de reserva en Wei
+      durationSeconds          // Nueva duración en segundos
+    );
+    
     console.log("Transacción enviada:", tx.hash);
     
     showSuccess("Confirmando relisting de subasta...");
@@ -2452,6 +2465,14 @@ async function relistAuction(auctionId, newReservePrice, durationHours) {
       errorMessage = "Usuario rechazó la transacción.";
     } else if (error.message.includes("gas")) {
       errorMessage = "Error con el gas de la transacción. Puede que el límite sea demasiado bajo.";
+    } else if (error.message.includes("Auction had a winner")) {
+      errorMessage = "No se puede volver a listar una subasta que ya tuvo un ganador.";
+    } else if (error.message.includes("Not the seller")) {
+      errorMessage = "Solo el vendedor original puede volver a listar esta subasta.";
+    } else if (error.message.includes("Auction still active")) {
+      errorMessage = "La subasta aún está activa y no puede ser vuelta a listar.";
+    } else if (error.message.includes("NFT not in contract")) {
+      errorMessage = "El NFT ya no está en posesión del contrato.";
     }
     
     console.error("Mensaje de error mostrado al usuario:", errorMessage);
@@ -2477,6 +2498,11 @@ function showRelistModal(auctionId) {
             </div>
             <div class="modal-body">
               <p class="mb-3">Puedes volver a listar este NFT en una nueva subasta con los siguientes parámetros:</p>
+              
+              <div class="alert alert-info mb-3">
+                <strong>Información:</strong> Esta función creará una nueva subasta con el mismo NFT que ya está en posesión del contrato.
+              </div>
+              
               <form id="relistForm">
                 <input type="hidden" id="relistAuctionId" value="${auctionId}">
                 <div class="mb-3">
@@ -2535,6 +2561,26 @@ function showRelistModal(auctionId) {
     // Update auction ID if modal already exists
     console.log("Modal de relisting ya existe, actualizando ID de subasta");
     document.getElementById('relistAuctionId').value = auctionId;
+  }
+  
+  // Intentar obtener los detalles de la subasta original para sugerir valores
+  try {
+    if (readOnlyAuctionContract) {
+      readOnlyAuctionContract.getManyAuctionDetails([auctionId]).then(auctions => {
+        if (auctions && auctions.length > 0) {
+          const originalAuction = auctions[0];
+          // Sugerir un precio de reserva similar al original
+          if (originalAuction.reservePrice) {
+            const originalReservePrice = ethers.utils.formatEther(originalAuction.reservePrice);
+            document.getElementById('newReservePrice').value = originalReservePrice;
+          }
+        }
+      }).catch(err => {
+        console.error("Error al obtener detalles de la subasta original:", err);
+      });
+    }
+  } catch (error) {
+    console.warn("No se pudieron cargar los detalles de la subasta original:", error);
   }
   
   // Show modal
@@ -3009,7 +3055,11 @@ async function loadAuctionDetails(auctionId) {
       }
     } else if (isOwner && !isActive && isFinalized && 
              (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
-      // Show relist option if auction is finalized and had no winner (either no bids or reserve not met)
+      // Mostrar botón de relist solo cuando:
+      // 1. El usuario es el dueño de la subasta
+      // 2. La subasta no está activa
+      // 3. La subasta está finalizada
+      // 4. La subasta no tuvo postor o no se alcanzó el precio de reserva
       actionButtons = `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
     }
     
@@ -3750,4 +3800,92 @@ function startTickerAnimation() {
   tickerContainer.style.animationName = 'ticker';
   tickerContainer.style.animationTimingFunction = 'linear';
   tickerContainer.style.animationIterationCount = 'infinite';
+}
+
+// Debug función específica para relist
+async function debugRelistAuction(auctionId) {
+  console.log("=== INICIO DE DIAGNÓSTICO DE RELISTING ===");
+  
+  if (!currentAccount) {
+    console.error("No hay cuenta conectada");
+    return;
+  }
+  
+  try {
+    // Obtener los detalles de la subasta
+    console.log(`Obteniendo detalles de la subasta #${auctionId}...`);
+    
+    if (!readOnlyAuctionContract) {
+      console.error("Contrato de solo lectura no inicializado");
+      return;
+    }
+    
+    const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionId]);
+    if (!auctionDetails || auctionDetails.length === 0) {
+      console.error("No se pudo obtener los detalles de la subasta");
+      return;
+    }
+    
+    const auction = auctionDetails[0];
+    console.log("Detalles de la subasta:", {
+      nftContract: auction.nftContract,
+      tokenId: auction.tokenId.toString(),
+      seller: auction.seller,
+      reservePrice: ethers.utils.formatEther(auction.reservePrice) + " ADRIAN",
+      endTime: new Date(auction.endTime.toNumber() * 1000).toLocaleString(),
+      highestBidder: auction.highestBidder,
+      highestBid: ethers.utils.formatEther(auction.highestBid) + " ADRIAN",
+      active: auction.active,
+      finalized: auction.finalized
+    });
+    
+    // Comprobar si la subasta cumple con las condiciones para relist
+    const isActive = auction.active;
+    const isFinalized = auction.finalized;
+    const hasNoWinner = auction.highestBidder === ethers.constants.AddressZero || 
+                         auction.highestBid.lt(auction.reservePrice);
+    const isSeller = auction.seller.toLowerCase() === currentAccount.toLowerCase();
+    
+    console.log("Estado para relisting:", {
+      isActive,
+      isFinalized,
+      hasNoWinner,
+      isSeller
+    });
+    
+    // Determinar si esta subasta es elegible para relisting
+    const canRelist = !isActive && isFinalized && hasNoWinner && isSeller;
+    console.log(`Esta subasta ${canRelist ? 'ES' : 'NO ES'} elegible para relisting`);
+    
+    // Si no es elegible, mostrar la razón
+    if (!canRelist) {
+      if (isActive) console.error("La subasta aún está activa");
+      if (!isFinalized) console.error("La subasta no está finalizada");
+      if (!hasNoWinner) console.error("La subasta ya tiene un ganador");
+      if (!isSeller) console.error("No eres el vendedor de esta subasta");
+    }
+    
+    // Verificar si el NFT sigue en el contrato
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      
+      const nftContract = new ethers.Contract(auction.nftContract, ERC721_ABI, signer);
+      const nftOwner = await nftContract.ownerOf(auction.tokenId);
+      
+      console.log(`Propietario actual del NFT: ${nftOwner}`);
+      console.log(`¿El contrato posee el NFT?: ${nftOwner.toLowerCase() === CONTRACT_ADDRESS.toLowerCase()}`);
+      
+      if (nftOwner.toLowerCase() !== CONTRACT_ADDRESS.toLowerCase()) {
+        console.error("El NFT ya no está en posesión del contrato de subastas");
+      }
+    } catch (error) {
+      console.error("Error al verificar la propiedad del NFT:", error);
+    }
+    
+  } catch (error) {
+    console.error("Error en diagnóstico de relisting:", error);
+  }
+  
+  console.log("=== FIN DE DIAGNÓSTICO DE RELISTING ===");
 }

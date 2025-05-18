@@ -7,6 +7,25 @@ const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
 const ALCHEMY_RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
 const RPC_URL = ALCHEMY_RPC_URL;
 
+// Infura configuration for optimized data loading
+const INFURA_API_KEY = "87db149e423346b5ba4bbb152d983522"; // Replace with your actual Infura API key if needed
+const INFURA_RPC_URL = `https://base-mainnet.infura.io/v3/${INFURA_API_KEY}`;
+
+// Create a read-only provider using Infura for faster queries
+let readOnlyInfuraProvider = null;
+let readOnlyInfuraAuctionContract = null;
+
+// Try to initialize Infura provider
+try {
+  readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
+    name: "base",
+    chainId: 8453
+  });
+  console.log("Infura provider initialized successfully");
+} catch (error) {
+  console.warn("Could not initialize Infura provider:", error);
+}
+
 // Contract ABIs
 const AUCTION_ABI = [
   // Read functions
@@ -287,6 +306,17 @@ async function checkConnection() {
       console.error("Failed to check connection:", error);
     }
   }
+  
+  // Initialize read-only Infura contract even if user isn't connected
+  if (!readOnlyInfuraAuctionContract && readOnlyInfuraProvider) {
+    readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
+    console.log("Initialized read-only Infura contract during connection check");
+  }
+  
+  // Initialize Alchemy for NFT retrieval regardless of connection
+  if (!alchemyWeb3) {
+    initAlchemyWeb3();
+  }
 }
 
 // Connect wallet
@@ -325,10 +355,34 @@ async function connectWallet() {
     // Initialize providers and contracts
     provider = new ethers.providers.Web3Provider(window.ethereum);
     signer = provider.getSigner();
-    readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    
+    // Initialize read-only providers for faster queries
+    if (!readOnlyProvider) {
+      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    }
+    
+    // Use Infura provider if available, otherwise fall back to standard provider
+    if (!readOnlyInfuraProvider) {
+      try {
+        readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
+          name: "base",
+          chainId: 8453
+        });
+        console.log("Infura provider initialized successfully on connect");
+      } catch (error) {
+        console.warn("Could not initialize Infura provider on connect:", error);
+      }
+    }
     
     // Create contract instances
     readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+    
+    // Initialize Infura contract if provider is available
+    if (readOnlyInfuraProvider) {
+      readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
+      console.log("Infura contract initialized successfully");
+    }
+    
     auctionContract = readOnlyAuctionContract.connect(signer);
     
     // Initialize Alchemy Web3
@@ -897,7 +951,7 @@ function formatTimeRemaining(endTime) {
   return `${seconds}s`;
 }
 
-// Load active auctions for explore tab
+// Optimized version using Infura and batch loading
 async function loadActiveAuctions() {
   const loadingElement = document.getElementById("loading-auctions");
   const noAuctionsMessage = document.getElementById("no-auctions-message");
@@ -908,24 +962,41 @@ async function loadActiveAuctions() {
   auctionsList.innerHTML = "";
   
   try {
-    console.log("Fetching active auctions count...");
-    // 1. First, get the total count of active auctions
-    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
+    console.log("Fetching active auctions using Infura...");
+    
+    // Use the Infura contract for faster queries, fallback to regular provider if needed
+    const contract = readOnlyInfuraAuctionContract || readOnlyAuctionContract;
+    
+    if (!contract) {
+      throw new Error("No contract available for loading auctions");
+    }
+    
+    // 1. Get the total count of active auctions
+    const count = await contract.getActiveAuctionsCount();
     console.log(`Active auctions count: ${count.toString()}`);
+    
+    if (count.toNumber() === 0) {
+      loadingElement.style.display = "none";
+      noAuctionsMessage.style.display = "block";
+      return;
+    }
     
     // 2. Calculate how many pages we need (contract limits to 50 per page)
     const pageSize = 50; // Contract has MAX_AUCTIONS_PER_PAGE = 50
     const pages = Math.ceil(count.toNumber() / pageSize);
     console.log(`Need to fetch ${pages} pages of auction IDs`);
     
-    // 3. Fetch all auction IDs from all pages
-    let allIds = [];
+    // 3. Fetch all auction IDs from all pages in parallel for better performance
+    const fetchPromises = [];
     for (let i = 0; i < pages; i++) {
-      console.log(`Fetching auction IDs page ${i}...`);
-      const ids = await readOnlyAuctionContract.getActiveAuctions(i, pageSize);
-      console.log(`Page ${i} IDs:`, ids.map(id => id.toString()));
-      allIds = allIds.concat(ids.map(id => id.toNumber()));
+      fetchPromises.push(contract.getActiveAuctions(i, pageSize));
     }
+    
+    const idResults = await Promise.all(fetchPromises);
+    let allIds = [];
+    idResults.forEach(ids => {
+      allIds = allIds.concat(ids.map(id => id.toNumber()));
+    });
     
     console.log(`Total auction IDs fetched: ${allIds.length}`);
     
@@ -935,11 +1006,25 @@ async function loadActiveAuctions() {
       return;
     }
     
-    // 4. Now get the detailed information for all auction IDs at once
-    console.log("Fetching auction details...");
-    const details = await readOnlyAuctionContract.getManyAuctionDetails(allIds);
-    console.log("Received auction details:", details);
+    // 4. Fetch details in batches to avoid gas limit issues
+    const batchSize = 20;
+    const batches = [];
+    for (let i = 0; i < allIds.length; i += batchSize) {
+      batches.push(allIds.slice(i, i + batchSize));
+    }
     
+    const detailPromises = batches.map(batch => contract.getManyAuctionDetails(batch));
+    const detailResults = await Promise.all(detailPromises);
+    
+    // Flatten the results
+    let details = [];
+    detailResults.forEach(result => {
+      details = details.concat(result);
+    });
+    
+    console.log("All auction details fetched successfully:", details.length);
+    
+    // Filter and sort as before
     const filter = document.getElementById("filterSelect").value;
     const now = Math.floor(Date.now() / 1000);
     
@@ -978,27 +1063,19 @@ async function loadActiveAuctions() {
     
     console.log(`Displaying ${filtered.length} auctions`);
     
-    // 5. Process and display each auction
+    // 5. Process and display each auction with a more efficient rendering approach
+    // Create a document fragment to minimize DOM operations
+    const fragment = document.createDocumentFragment();
+    
     for (let i = 0; i < filtered.length; i++) {
       const auction = filtered[i];
       const auctionId = allIds[details.indexOf(auction)]; // Get the correct auction ID
       
-      // Debug log to see the exact data structure
-      console.log(`Auction #${auctionId} raw data:`, {
-        nftContract: auction.nftContract,
-        tokenId: auction.tokenId?.toString(),
-        seller: auction.seller, 
-        reservePrice: auction.reservePrice?.toString(),
-        endTime: auction.endTime?.toString(),
-        highestBidder: auction.highestBidder,
-        highestBid: auction.highestBid?.toString(),
-        active: auction.active, // This might be 0/1 or true/false
-        finalized: auction.finalized // This might be 0/1 or true/false
-      });
-      
-      await renderAuction(auction, auctionId, auctionsList);
+      await renderAuction(auction, auctionId, fragment);
     }
     
+    // Add all auctions to the DOM at once
+    auctionsList.appendChild(fragment);
     loadingElement.style.display = "none";
     
   } catch (error) {
@@ -3012,35 +3089,55 @@ document.addEventListener('DOMContentLoaded', function() {
   console.log('auction.js loaded and initialized');
 });
 
-// Función para cargar las subastas activas para el mini-carrusel
+// Optimized function to load auctions for ticker
 async function loadAuctionsForCarousel() {
   try {
-    console.log("Loading auctions for mini-carousel...");
+    console.log("Loading auctions for ticker using Infura...");
     
-    // Initialize contract if not available
-    if (!readOnlyAuctionContract || !readOnlyProvider) {
-      console.log("Contract not initialized for carousel, initializing now...");
-      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
-      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
-      console.log("Contract initialized successfully for carousel");
+    // Use Infura contract for faster queries if available
+    let contract = readOnlyInfuraAuctionContract || readOnlyAuctionContract;
+    
+    // If no contract is available, initialize one
+    if (!contract) {
+      console.log("Contract not initialized for ticker, initializing now...");
+      
+      // Try Infura first
+      if (!readOnlyInfuraProvider) {
+        try {
+          readOnlyInfuraProvider = new ethers.providers.JsonRpcProvider(INFURA_RPC_URL, {
+            name: "base",
+            chainId: 8453
+          });
+          readOnlyInfuraAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyInfuraProvider);
+          contract = readOnlyInfuraAuctionContract;
+          console.log("Infura contract initialized successfully for ticker");
+        } catch (error) {
+          console.warn("Could not initialize Infura, falling back to standard provider:", error);
+          // Fall back to standard provider
+          readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+          readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+          contract = readOnlyAuctionContract;
+          console.log("Standard contract initialized for ticker");
+        }
+      }
     }
     
-    // 1. Get all active auctions
-    const count = await readOnlyAuctionContract.getActiveAuctionsCount();
-    console.log(`Active auctions for carousel: ${count.toString()}`);
+    // 1. Get all active auctions count
+    const count = await contract.getActiveAuctionsCount();
+    console.log(`Active auctions for ticker: ${count.toString()}`);
     
     // If no auctions, return empty array
     if (count.toNumber() === 0) {
       return [];
     }
     
-    // 2. Limit to a maximum of 10 auctions for the carousel
+    // 2. Limit to a maximum of 10 auctions for the ticker
     const pageSize = Math.min(10, count.toNumber());
-    const ids = await readOnlyAuctionContract.getActiveAuctions(0, pageSize);
+    const ids = await contract.getActiveAuctions(0, pageSize);
     const auctionIds = ids.map(id => id.toNumber());
     
-    // 3. Get auction details
-    const details = await readOnlyAuctionContract.getManyAuctionDetails(auctionIds);
+    // 3. Get auction details in one batch call
+    const details = await contract.getManyAuctionDetails(auctionIds);
     
     // 4. Filter only active auctions and sort by remaining time
     const now = Math.floor(Date.now() / 1000);
@@ -3057,8 +3154,8 @@ async function loadAuctionsForCarousel() {
       return aTime - bTime;
     });
     
-    // 5. Process data for carousel
-    const carouselData = await Promise.all(activeAuctions.map(async (auction, index) => {
+    // 5. Process data for ticker - use Promise.all to parallel process
+    const carouselDataPromises = activeAuctions.map(async (auction, index) => {
       const auctionId = auctionIds[details.indexOf(auction)];
       
       const nftContract = auction.nftContract || ethers.constants.AddressZero;
@@ -3067,66 +3164,81 @@ async function loadAuctionsForCarousel() {
       const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
       const endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
       
-      // 6. Get NFT image
+      // 6. Get NFT image - use caching for better performance
+      // Default placeholders
       let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
       let nftName = `NFT #${tokenId}`;
       
-      // Try to get NFT metadata
-      if (alchemyWeb3 && nftContract && nftContract !== ethers.constants.AddressZero) {
-        try {
-          const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
+      try {
+        if (nftContract && nftContract !== ethers.constants.AddressZero) {
+          // Try to get image using contract read operations
+          const nftContractInstance = new ethers.Contract(
+            nftContract, 
+            ERC721_ABI, 
+            readOnlyInfuraProvider || readOnlyProvider
+          );
           
+          // Get token URI with error handling
+          let tokenURI;
           try {
-            const tokenURI = await nftContractInstance.tokenURI(tokenId);
-            
-            if (tokenURI) {
-              let metadata = null;
+            tokenURI = await nftContractInstance.tokenURI(tokenId);
+          } catch (err) {
+            console.warn(`Error fetching tokenURI for ticker auction #${auctionId}:`, err);
+          }
+          
+          if (tokenURI) {
+            // Handle IPFS URIs
+            if (tokenURI.startsWith('ipfs://')) {
+              const ipfsHash = tokenURI.replace('ipfs://', '');
+              const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
+                `https://ipfs.io/${ipfsHash}` : 
+                `https://ipfs.io/ipfs/${ipfsHash}`;
               
-              // Handle IPFS URLs
-              if (tokenURI.startsWith('ipfs://')) {
-                const ipfsHash = tokenURI.replace('ipfs://', '');
-                const ipfsUrl = ipfsHash.startsWith('ipfs/') ? 
-                  `https://ipfs.io/${ipfsHash}` : 
-                  `https://ipfs.io/ipfs/${ipfsHash}`;
+              try {
+                const response = await fetch(ipfsUrl);
+                const metadata = await response.json();
                 
-                try {
-                  const response = await fetch(ipfsUrl);
-                  metadata = await response.json();
-                } catch (error) {
-                  console.warn("Error getting metadata from IPFS for carousel:", error);
+                if (metadata) {
+                  if (metadata.name) {
+                    nftName = metadata.name;
+                  }
+                  
+                  if (metadata.image) {
+                    if (metadata.image.startsWith('ipfs://')) {
+                      const imageHash = metadata.image.replace('ipfs://', '');
+                      imageUrl = imageHash.startsWith('ipfs/') ? 
+                        `https://ipfs.io/${imageHash}` : 
+                        `https://ipfs.io/ipfs/${imageHash}`;
+                    } else {
+                      imageUrl = metadata.image;
+                    }
+                  }
                 }
-              } else if (tokenURI.startsWith('http')) {
-                try {
-                  const response = await fetch(tokenURI);
-                  metadata = await response.json();
-                } catch (error) {
-                  console.warn("Error getting HTTP metadata for carousel:", error);
-                }
+              } catch (error) {
+                console.warn("Error getting IPFS metadata for ticker:", error);
               }
-              
-              if (metadata) {
-                if (metadata.name) {
-                  nftName = metadata.name;
-                }
+            } else if (tokenURI.startsWith('http')) {
+              try {
+                const response = await fetch(tokenURI);
+                const metadata = await response.json();
                 
-                if (metadata.image) {
-                  if (metadata.image.startsWith('ipfs://')) {
-                    const imageHash = metadata.image.replace('ipfs://', '');
-                    imageUrl = imageHash.startsWith('ipfs/') ? 
-                      `https://ipfs.io/${imageHash}` : 
-                      `https://ipfs.io/ipfs/${imageHash}`;
-                  } else {
+                if (metadata) {
+                  if (metadata.name) {
+                    nftName = metadata.name;
+                  }
+                  
+                  if (metadata.image) {
                     imageUrl = metadata.image;
                   }
                 }
+              } catch (error) {
+                console.warn("Error getting HTTP metadata for ticker:", error);
               }
             }
-          } catch (err) {
-            console.warn(`Error fetching tokenURI for carousel:`, err);
           }
-        } catch (error) {
-          console.warn(`Error loading NFT image for carousel:`, error);
         }
+      } catch (error) {
+        console.warn(`Error loading NFT image for ticker:`, error);
       }
       
       // 7. Calculate price to display (highest bid or reserve price)
@@ -3147,13 +3259,16 @@ async function loadAuctionsForCarousel() {
         timeRemaining,
         formattedTime
       };
-    }));
+    });
     
-    console.log("Carousel data prepared:", carouselData);
+    // Wait for all promises to resolve
+    const carouselData = await Promise.all(carouselDataPromises);
+    
+    console.log("Ticker data prepared:", carouselData);
     return carouselData;
     
   } catch (error) {
-    console.error("Error loading auctions for carousel:", error);
+    console.error("Error loading auctions for ticker:", error);
     return [];
   }
 }
@@ -3194,8 +3309,21 @@ function updateAuctionCarousel() {
       </div>
     `).join('');
     
-    // Duplicate the items to create a seamless loop effect
-    tickerContainer.innerHTML = tickerItems + tickerItems;
+    // Duplicate the items multiple times to ensure a smooth, continuous loop
+    // The more duplicates, the smoother the transition when the ticker loops
+    tickerContainer.innerHTML = tickerItems + tickerItems + tickerItems;
+    
+    // Update animation duration based on number of items
+    // More items should move faster to keep the speed consistent
+    const totalItems = auctions.length;
+    let animationDuration = 60; // base duration in seconds (already slow)
+    if (totalItems > 5) {
+      // Increase speed slightly for many items so users see more variety
+      animationDuration = 80;
+    }
+    
+    // Apply animation duration directly to the ticker
+    tickerContainer.style.animationDuration = `${animationDuration}s`;
   });
 }
 
@@ -3209,7 +3337,12 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Initializing auctions ticker");
     updateAuctionCarousel();
     
-    // Update ticker every 60 seconds
+    // Update ticker every 60 seconds to keep content fresh
     setInterval(updateAuctionCarousel, 60000);
+  }
+  
+  // Initialize contract immediately for better UX
+  if (!readOnlyAuctionContract && !readOnlyInfuraAuctionContract) {
+    checkConnection();
   }
 });

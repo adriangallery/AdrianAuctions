@@ -3203,3 +3203,14 @@ function updateAuctionCarousel() {
     tickerContainer.innerHTML = tickerItems + tickerItems;
   });
 }
+
+// Inicializar el carousel al cargar la página
+document.addEventListener('DOMContentLoaded', () => {
+  // Inicializar el carousel
+  updateAuctionCarousel();
+  
+  // Actualizar el carousel cada minuto
+  setInterval(updateAuctionCarousel, 60000);
+  
+  console.log("Ticker carousel inicializado correctamente");
+});

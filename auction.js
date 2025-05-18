@@ -348,6 +348,9 @@ async function connectWallet() {
     if (appContent) appContent.style.display = "block";
     if (walletAddress) walletAddress.textContent = `${currentAccount.slice(0,6)}...${currentAccount.slice(-4)}`;
     
+    // Inicializar el ticker carousel ya que ahora es visible
+    updateAuctionCarousel();
+    
     // Event listeners for account/chain changes
     window.ethereum.on('accountsChanged', (accounts) => {
       window.location.reload();
@@ -3330,14 +3333,6 @@ function updateAuctionCarousel() {
       }
     } else {
       console.log("No hay nuevas subastas, manteniendo el ticker actual");
-    }
-    
-    // Asegurar que el ticker sea visible incluso si la wallet no está conectada
-    const appContent = document.getElementById('app-content');
-    const carouselContainer = document.getElementById('auction-carousel-container');
-    
-    if (carouselContainer && carouselContainer.parentNode && appContent && appContent.style.display === 'none') {
-      carouselContainer.style.display = 'block';
     }
   });
 }

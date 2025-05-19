@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- AdrianAuctions - Auction Details Page (Version estable 1.0) - Mayo 2024 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -589,122 +590,100 @@
       <p class="mt-3">Loading auction details...</p>
     </div>
     
-    <!-- Message shown when auction is not found -->
-    <div id="no-auction-message" class="alert alert-info text-center py-5" style="display: none;">
-      <h4>Auction Not Found</h4>
+    <!-- No Auction Message -->
+    <div id="no-auction-message" class="text-center py-5 card" style="display: none;">
+      <h2>Auction Not Found</h2>
       <p>The auction you're looking for doesn't exist or has been removed.</p>
-      
-      <!-- Botón para intentar reparar -->
-      <div class="mt-3">
-        <button id="repairButton" class="btn btn-primary mb-3">Try to Repair/Reload Auction</button>
-      </div>
-      
-      <a href="index.html" class="btn btn-outline-primary">Browse All Auctions</a>
+      <a href="index.html" class="btn-action mt-3">Browse All Auctions</a>
     </div>
     
     <!-- Auction Details -->
-    <div class="container mt-4" id="auction-details-container" style="display: none;">
+    <div id="auction-details-container" class="card" style="display: none;">
       <div class="auction-detail-grid">
-        <div class="nft-details">
+        <div class="image-section">
           <div class="nft-image-container">
-            <img id="detail-nft-image" class="nft-image" src="https://placehold.co/600x600?text=Loading+NFT" alt="NFT Image">
+            <img id="detail-nft-image" src="https://placehold.co/600x600?text=NFT+Image" class="nft-image" alt="NFT Image">
           </div>
           
-          <div class="card mt-4">
-            <div class="section-title">Share This Auction</div>
-            <div class="share-content">
-              <button id="copy-link" class="btn-action mb-3 w-100">Copy Link</button>
-              <div class="share-buttons">
-                <a id="twitter-share" href="#" target="_blank" class="share-button share-twitter">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
-                    <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
-                  </svg>
-                </a>
-                <a id="facebook-share" href="#" target="_blank" class="share-button share-facebook">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
-                    <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
-                  </svg>
-                </a>
-                <a id="whatsapp-share" href="#" target="_blank" class="share-button share-whatsapp">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
-                    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-                  </svg>
-                </a>
-                <a id="telegram-share" href="#" target="_blank" class="share-button share-telegram">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
-                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
-                  </svg>
-                </a>
-              </div>
+          <div class="share-section mt-3">
+            <h4>Share This Auction</h4>
+            <div class="share-buttons">
+              <a href="#" class="share-button share-twitter" id="twitter-share" title="Share on Twitter">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-facebook" id="facebook-share" title="Share on Facebook">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
+                  <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-whatsapp" id="whatsapp-share" title="Share on WhatsApp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+                  <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                </svg>
+              </a>
+              <a href="#" class="share-button share-telegram" id="telegram-share" title="Share on Telegram">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
+                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
+                </svg>
+              </a>
+              <button class="share-button share-copy" id="copy-link" title="Copy Link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
+                  <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
+                  <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
         
         <div class="auction-info">
           <h2 id="detail-title">NFT Title</h2>
-          <div id="detail-action-container" class="mb-4">
-            <!-- Auction action buttons will be placed here -->
-          </div>
+          <div id="detail-status-badges"></div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Auction ID</div>
-            <div id="detail-auction-id" class="detail-value">#0</div>
+            <div class="detail-value" id="detail-auction-id">#0</div>
           </div>
           
           <div class="auction-detail-item">
-            <div class="detail-label">Contract Address</div>
-            <div id="detail-contract" class="detail-value">0x0000...0000</div>
+            <div class="detail-label">NFT Contract</div>
+            <div class="detail-value" id="detail-contract"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Token ID</div>
-            <div id="detail-token-id" class="detail-value">0</div>
+            <div class="detail-value" id="detail-token-id"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Seller</div>
-            <div id="detail-seller" class="detail-value">0x0000...0000</div>
+            <div class="detail-value" id="detail-seller"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Reserve Price</div>
-            <div id="detail-reserve-price" class="detail-value">0 ADRIAN</div>
+            <div class="detail-value" id="detail-reserve-price"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Current Bid</div>
-            <div id="detail-current-bid" class="detail-value">No bids yet</div>
+            <div class="detail-value" id="detail-current-bid"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Highest Bidder</div>
-            <div id="detail-highest-bidder" class="detail-value">No bidder yet</div>
+            <div class="detail-value" id="detail-highest-bidder"></div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label" id="detail-time-label">Time Remaining</div>
-            <div id="detail-time-value" class="detail-value">Loading...</div>
+            <div class="detail-value" id="detail-time-value"></div>
           </div>
           
-          <!-- Botón de Outbid que solo aparece cuando el usuario ha sido superado -->
-          <div id="outbid-notification" style="display: none;" class="alert alert-warning my-3">
-            <strong>Outbid!</strong> Someone placed a higher bid than yours.
-            <button id="bid-again-btn" class="btn-action mt-2 w-100">Bid Again</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sección para el historial de pujas -->
-      <div class="card mt-4">
-        <div class="section-title">Bid History</div>
-        <div id="bid-history-container">
-          <div id="loading-history" class="text-center p-4">
-            <div class="loading-spinner"></div>
-            <p class="mt-3">Loading bid history...</p>
-          </div>
-          <div id="bid-history-list" class="list-group"></div>
-          <div id="no-bids-message" class="alert alert-info mt-3" style="display: none;">
-            No bids have been placed on this auction yet.
+          <div id="detail-action-container" class="mt-4">
+            <!-- Buttons will be added dynamically here -->
           </div>
         </div>
       </div>
@@ -754,92 +733,491 @@
   <script src="https://cdn.jsdelivr.net/npm/@alch/alchemy-web3@1.4.7/dist/alchemyWeb3.min.js"></script>
   
   <script>
-    // Código para obtener el ID de la subasta desde la URL
-    document.addEventListener('DOMContentLoaded', async function() {
-      try {
-        // Verificar que tenemos ethers.js disponible
-        if (typeof ethers === 'undefined') {
-          console.error("Error: La librería ethers.js no está cargada");
-          document.getElementById('loading-auction').style.display = 'none';
-          document.getElementById('error-message').innerHTML = "Error: Could not load ethers.js library. Please refresh the page.";
-          document.getElementById('error-container').style.display = 'block';
-          return;
-        }
-        
-        console.log("Obteniendo ID de subasta desde la URL...");
-        
-        // Obtener ID de la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        let auctionId = urlParams.get('id');
-        
-        console.log(`Parámetro ID en URL: ${auctionId}`);
-        
-        if (!auctionId) {
-          console.error("No se especificó ID de subasta en la URL");
-          document.getElementById('loading-auction').style.display = 'none';
-          document.getElementById('no-auction-message').style.display = 'block';
-          return;
-        }
-        
-        // Validar que el ID sea un número válido
-        if (isNaN(Number(auctionId)) || !Number.isInteger(Number(auctionId)) || Number(auctionId) <= 0) {
-          console.error(`ID de subasta inválido: ${auctionId}`);
-          document.getElementById('loading-auction').style.display = 'none';
-          document.getElementById('error-message').innerHTML = `Invalid auction ID: ${auctionId}. Please use a valid positive integer.`;
-          document.getElementById('error-container').style.display = 'block';
-          return;
-        }
-        
-        // Convertir a número para asegurar que no haya problemas
-        auctionId = Number(auctionId);
-        console.log(`ID de subasta validado: ${auctionId}`);
-        
-        // Cargar los detalles
-        console.log("Cargando detalles de la subasta...");
-        await loadAuctionDetailsPage(auctionId);
-      } catch (error) {
-        console.error("Error al cargar la página de detalles:", error);
-        document.getElementById('loading-auction').style.display = 'none';
-        document.getElementById('error-message').innerHTML = `Error loading auction: ${error.message}`;
-        document.getElementById('error-container').style.display = 'block';
-      }
-    });
-  </script>
-
-  <!-- Script para manejar el botón de reparación -->
-  <script>
+    // This script is specific to the auctiondetails.html page
     document.addEventListener('DOMContentLoaded', function() {
-      const repairButton = document.getElementById('repairButton');
-      if (repairButton) {
-        repairButton.addEventListener('click', async function() {
-          try {
-            // Mostrar loading mientras se intenta reparar
-            document.getElementById('no-auction-message').style.display = 'none';
-            document.getElementById('loading-auction').style.display = 'block';
-            
-            // Obtener ID de la URL nuevamente
-            const urlParams = new URLSearchParams(window.location.search);
-            const auctionId = urlParams.get('id');
-            
-            if (!auctionId) {
-              throw new Error("No auction ID provided");
-            }
-            
-            console.log(`Intentando reparar la subasta #${auctionId}...`);
-            
-            // Intentar reparar usando la función especializada
-            if (typeof repairAuctionDetails === 'function') {
-              await repairAuctionDetails(auctionId);
-            } else {
-              throw new Error("Repair function not available");
-            }
-          } catch (error) {
-            console.error("Error during repair attempt:", error);
-            document.getElementById('loading-auction').style.display = 'none';
-            document.getElementById('error-message').innerHTML = `Error trying to repair: ${error.message}`;
-            document.getElementById('error-container').style.display = 'block';
+      // Parse auction ID from URL query parameter
+      const urlParams = new URLSearchParams(window.location.search);
+      const auctionId = urlParams.get('id');
+      
+      // Initialize the mini-carousel
+      const carouselContainer = document.getElementById('auction-carousel-container');
+      if (carouselContainer) {
+        console.log("Initializing mini-carousel on details page");
+        
+        // Add pause on hover functionality for ticker
+        const ticker = document.querySelector('.ticker');
+        if (ticker) {
+          ticker.addEventListener('mouseenter', function() {
+            ticker.style.animationPlayState = 'paused';
+          });
+          
+          ticker.addEventListener('mouseleave', function() {
+            ticker.style.animationPlayState = 'running';
+          });
+        }
+        
+        // Wait for auction.js to load and be available
+        window.addEventListener('auctionJsLoaded', function() {
+          // If updateAuctionCarousel is available, use it
+          if (typeof updateAuctionCarousel === 'function') {
+            updateAuctionCarousel();
+            // Update carousel every 60 seconds
+            setInterval(updateAuctionCarousel, 60000);
           }
         });
+        
+        // If after 3 seconds auction.js hasn't loaded, show alternative message
+        setTimeout(() => {
+          if (!window.auctionJsLoaded) {
+            const carouselItems = document.getElementById('auction-carousel-items');
+            if (carouselItems) {
+              carouselItems.innerHTML = `
+                <div class="ticker-item">
+                  <div class="auction-carousel-card">
+                    <p class="text-center">Explore all auctions on <a href="index.html">the main page</a></p>
+                  </div>
+                </div>
+              `;
+            }
+          }
+        }, 3000);
+      }
+      
+      // Setup copy link button
+      document.getElementById('copy-link').addEventListener('click', function() {
+        const currentUrl = window.location.href;
+        navigator.clipboard.writeText(currentUrl).then(function() {
+          showSuccess("Link copied to clipboard!");
+        }, function() {
+          showError("Failed to copy link");
+        });
+      });
+      
+      // Setup share buttons
+      function updateShareLinks(title, auctionId) {
+        const url = encodeURIComponent(window.location.href);
+        const text = encodeURIComponent(`Check out this NFT auction: ${title} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
+        
+        document.getElementById('twitter-share').href = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        document.getElementById('facebook-share').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        document.getElementById('whatsapp-share').href = `https://wa.me/?text=${text}%20${url}`;
+        document.getElementById('telegram-share').href = `https://t.me/share/url?url=${url}&text=${text}`;
+      }
+      
+      // Fallback function para inicializar el contrato manualmente
+      async function initializeContractManually() {
+        console.log("Inicializando contrato manualmente...");
+        
+        // Estas variables deben coincidir con las que están en auction.js
+        const CONTRACT_ADDRESS = "0x1df1de9cb0cb887f08634ec66c4c8d781691f497";
+        const ALCHEMY_API_KEY = "5qIXA1UZxOAzi8b9l0nrYmsQBO9-W7Ot";
+        const RPC_URL = `https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`;
+        
+        // ABIs
+        const AUCTION_ABI = [
+          "function getManyAuctionDetails(uint256[]) view returns ((address nftContract,uint256 tokenId,address seller,uint256 reservePrice,uint256 endTime,address highestBidder,uint256 highestBid,bool active,bool finalized)[] memory)"
+        ];
+        
+        const ERC721_ABI = [
+          "function tokenURI(uint256 tokenId) external view returns (string memory)"
+        ];
+        
+        try {
+          // Inicializar proveedor read-only
+          window.readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+          window.readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, window.readOnlyProvider);
+          
+          console.log("Contrato inicializado manualmente con éxito");
+          return true;
+        } catch (error) {
+          console.error("Error inicializando contrato manualmente:", error);
+          return false;
+        }
+      }
+      
+      // Fallback function para cargar detalles de la subasta
+      async function loadAuctionDetailsManually(auctionId) {
+        console.log(`Cargando detalles para subasta #${auctionId} manualmente`);
+        
+        try {
+          // Verificar si tenemos acceso al contrato
+          if (!window.readOnlyAuctionContract) {
+            const success = await initializeContractManually();
+            if (!success) {
+              throw new Error("No se pudo inicializar el contrato");
+            }
+          }
+          
+          // Obtener detalles de la subasta
+          const auctionIdArray = [ethers.BigNumber.from(auctionId)];
+          const auctionsDetails = await window.readOnlyAuctionContract.getManyAuctionDetails(auctionIdArray);
+          
+          if (!auctionsDetails || auctionsDetails.length === 0) {
+            throw new Error("Subasta no encontrada");
+          }
+          
+          // Procesar datos de la subasta
+          const auction = auctionsDetails[0];
+          console.log(`Datos de subasta #${auctionId}:`, auction);
+          
+          // Extraer valores con manejo seguro
+          const nftContract = auction.nftContract || ethers.constants.AddressZero;
+          const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+          const seller = auction.seller || ethers.constants.AddressZero;
+          const highestBidder = auction.highestBidder || ethers.constants.AddressZero;
+          const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+          const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+          
+          // Convertir tiempo final
+          let endTime;
+          try {
+            endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+          } catch (err) {
+            console.error("Error al convertir endTime:", err);
+            endTime = 0;
+          }
+          
+          // Convertir valores booleanos
+          const isActive = auction.active === true || auction.active === 1;
+          const isFinalized = auction.finalized === true || auction.finalized === 1;
+          
+          const now = Math.floor(Date.now() / 1000);
+          const timeRemaining = endTime - now;
+          
+          // Nombre del NFT y URL de imagen por defecto
+          let imageUrl = 'https://placehold.co/600x600?text=NFT+Image';
+          let nftName = `NFT #${tokenId}`;
+          
+          // Tratar de obtener metadata del NFT
+          if (nftContract && nftContract !== ethers.constants.AddressZero) {
+            try {
+              const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, window.readOnlyProvider);
+              
+              try {
+                const tokenURI = await nftContractInstance.tokenURI(tokenId);
+                console.log(`Token URI obtenido:`, tokenURI);
+                
+                if (tokenURI) {
+                  // Intentar obtener metadata
+                  let metadata = null;
+                  let metadataUrl = tokenURI;
+                  
+                  if (tokenURI.startsWith('ipfs://')) {
+                    const ipfsHash = tokenURI.replace('ipfs://', '');
+                    metadataUrl = ipfsHash.startsWith('ipfs/') 
+                      ? `https://ipfs.io/${ipfsHash}`
+                      : `https://ipfs.io/ipfs/${ipfsHash}`;
+                  }
+                  
+                  if (metadataUrl.startsWith('http')) {
+                    try {
+                      const response = await fetch(metadataUrl);
+                      metadata = await response.json();
+                      
+                      if (metadata) {
+                        if (metadata.name) nftName = metadata.name;
+                        
+                        if (metadata.image) {
+                          if (metadata.image.startsWith('ipfs://')) {
+                            const imageHash = metadata.image.replace('ipfs://', '');
+                            imageUrl = imageHash.startsWith('ipfs/') 
+                              ? `https://ipfs.io/${imageHash}`
+                              : `https://ipfs.io/ipfs/${imageHash}`;
+                          } else {
+                            imageUrl = metadata.image;
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.warn("Error obteniendo metadata:", error);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.warn(`Error obteniendo tokenURI:`, err);
+              }
+            } catch (error) {
+              console.warn(`Error cargando imagen NFT para subasta #${auctionId}:`, error);
+            }
+          }
+          
+          // Actualizar UI con datos de la subasta
+          document.getElementById('detail-title').textContent = nftName;
+          document.getElementById('detail-nft-image').src = imageUrl;
+          document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
+          document.getElementById('detail-contract').textContent = formatAddressSimple(nftContract);
+          document.getElementById('detail-token-id').textContent = tokenId;
+          document.getElementById('detail-seller').textContent = formatAddressSimple(seller);
+          document.getElementById('detail-reserve-price').textContent = `${formatEtherSimple(reservePrice)} ADRIAN`;
+          document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? `${formatEtherSimple(highestBid)} ADRIAN` : "No bids yet";
+          document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddressSimple(highestBidder) : "No bidder yet";
+          
+          // Actualizar estado de tiempo
+          if (isActive && timeRemaining > 0) {
+            document.getElementById('detail-time-label').textContent = "Time Remaining";
+            document.getElementById('detail-time-value').textContent = formatTimeRemainingSimple(endTime);
+          } else {
+            document.getElementById('detail-time-label').textContent = "Status";
+            document.getElementById('detail-time-value').textContent = isActive ? "Active" : (isFinalized ? "Finalized" : "Inactive");
+          }
+          
+          // Crear botones de acción
+          let actionButtons = ``;
+          
+          // Añadir botón para ofertar si la subasta está activa
+          if (isActive && timeRemaining > 0) {
+            actionButtons += `<button class="btn-action w-100 mb-2" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">Place Bid</button>`;
+          }
+          
+          // Añadir botón para compartir con exactamente el mismo estilo que Place Bid
+          actionButtons += `<button class="btn-action w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
+          
+          // Añadir botón para volver a todas las subastas
+          actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
+          
+          document.getElementById('detail-action-container').innerHTML = actionButtons;
+          
+          // Ocultar loading y mostrar detalles
+          document.getElementById('loading-auction').style.display = 'none';
+          document.getElementById('auction-details-container').style.display = 'block';
+          
+          // Actualizar info para compartir
+          updateShareLinks(nftName, auctionId);
+          
+          // Actualizar metadatos para compartir en redes sociales
+          const currentUrl = window.location.href;
+          
+          // Usar siempre la imagen fija para compartir en redes sociales
+          const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
+          
+          // Actualizar metas OpenGraph
+          const ogImageElement = document.getElementById('og-image');
+          const ogTitleElement = document.getElementById('og-title');
+          const ogDescElement = document.getElementById('og-description');
+          const ogUrlElement = document.getElementById('og-url');
+          
+          if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
+          if (ogTitleElement) ogTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+          if (ogDescElement) ogDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEtherSimple(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
+          if (ogUrlElement) ogUrlElement.setAttribute('content', currentUrl);
+          
+          // Actualizar metas Twitter
+          const twitterImageElement = document.getElementById('twitter-image');
+          const twitterTitleElement = document.getElementById('twitter-title');
+          const twitterDescElement = document.getElementById('twitter-description');
+          const twitterImageAltElement = document.getElementById('twitter-image-alt');
+          
+          if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
+          if (twitterTitleElement) twitterTitleElement.setAttribute('content', `${nftName} - Adrian Auction`);
+          if (twitterDescElement) twitterDescElement.setAttribute('content', `Bid on "${nftName}" NFT auction on Adrian Auction! Current bid: ${formatEtherSimple(highestBid)} ADRIAN. $ADRIAN @adriancerda 🟦🟥`);
+          if (twitterImageAltElement) twitterImageAltElement.setAttribute('content', `NFT auction image of ${nftName}`);
+          
+          // Actualizar título de la página
+          document.title = `${nftName} - Adrian Auction`;
+          
+        } catch (error) {
+          console.error(`Error cargando subasta #${auctionId}:`, error);
+          document.getElementById('loading-auction').style.display = 'none';
+          document.getElementById('no-auction-message').style.display = 'block';
+        }
+      }
+      
+      // Funciones helper simplificadas
+      function formatEtherSimple(wei) {
+        // Convertir wei a ether (string)
+        try {
+          return ethers.utils.formatUnits(wei, 18);
+        } catch (e) {
+          return "0";
+        }
+      }
+      
+      function formatAddressSimple(address) {
+        if (!address) return "";
+        return `${address.slice(0,6)}...${address.slice(-4)}`;
+      }
+      
+      function formatTimeRemainingSimple(endTime) {
+        const now = Math.floor(Date.now() / 1000);
+        const secondsRemaining = endTime - now;
+        
+        if (secondsRemaining <= 0) return "Ended";
+        
+        const days = Math.floor(secondsRemaining / 86400);
+        const hours = Math.floor((secondsRemaining % 86400) / 3600);
+        const minutes = Math.floor((secondsRemaining % 3600) / 60);
+        const seconds = secondsRemaining % 60;
+        
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        if (minutes > 0) return `${minutes}m ${seconds}s`;
+        return `${seconds}s`;
+      }
+      
+      // Función para compartir una subasta
+      function shareAuction(auctionId, nftName) {
+        // Obtener la URL actual
+        const currentUrl = window.location.href;
+        
+        // Texto para compartir con $ADRIAN, @adriancerda y emojis 🟦🟥
+        const shareText = encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥`);
+        
+        // Usar siempre la imagen fija proporcionada para compartir
+        const fixedShareImage = 'https://adrianpunks.com/market/adrianpunksimages/200.png';
+        
+        // Actualizar metadatos para compartir
+        const ogImageElement = document.getElementById('og-image');
+        const twitterImageElement = document.getElementById('twitter-image');
+        
+        if (ogImageElement) ogImageElement.setAttribute('content', fixedShareImage);
+        if (twitterImageElement) twitterImageElement.setAttribute('content', fixedShareImage);
+        
+        // Crear un modal para compartir
+        const modalHTML = `
+          <div class="modal fade" id="shareModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Share Auction #${auctionId}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Share this auction with others:</p>
+                  
+                  <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="shareUrlInput" value="${currentUrl}" readonly>
+                    <button class="btn btn-outline-secondary" type="button" id="copyShareUrl">Copy</button>
+                  </div>
+                  
+                  <div class="share-buttons mt-3 d-flex gap-2">
+                    <a href="https://twitter.com/intent/tweet?url=${encodeURIComponent(currentUrl)}&text=${shareText}" target="_blank" class="btn btn-sm text-white" style="background-color: #1DA1F2;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                        <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                      </svg>
+                      Twitter
+                    </a>
+                    <a href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(currentUrl)}" target="_blank" class="btn btn-sm text-white" style="background-color: #3b5998;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
+                        <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                      </svg>
+                      Facebook
+                    </a>
+                    <a href="https://wa.me/?text=${encodeURIComponent(`Check out this NFT auction: ${decodeURIComponent(nftName)} on Adrian Auction! $ADRIAN @adriancerda 🟦🟥 ${currentUrl}`)}" target="_blank" class="btn btn-sm text-white" style="background-color: #25D366;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+                        <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                      </svg>
+                      WhatsApp
+                    </a>
+                    <a href="https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${shareText}" target="_blank" class="btn btn-sm text-white" style="background-color: #0088cc;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
+                      </svg>
+                      Telegram
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Eliminar modal anterior si existe
+        const existingModal = document.getElementById('shareModal');
+        if (existingModal) {
+          existingModal.remove();
+        }
+        
+        // Añadir el modal al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Inicializar el modal
+        const shareModal = new bootstrap.Modal(document.getElementById('shareModal'));
+        shareModal.show();
+        
+        // Configurar la funcionalidad de copia
+        document.getElementById('copyShareUrl').addEventListener('click', function() {
+          const shareUrlInput = document.getElementById('shareUrlInput');
+          shareUrlInput.select();
+          shareUrlInput.setSelectionRange(0, 99999); // Para dispositivos móviles
+          
+          // Copiar el texto al portapapeles
+          navigator.clipboard.writeText(shareUrlInput.value)
+            .then(() => {
+              showSuccess("Enlace copiado al portapapeles!");
+            })
+            .catch(err => {
+              showError("Error al copiar enlace");
+              console.error('No se pudo copiar el texto: ', err);
+            });
+        });
+      }
+      
+      // Funciones para mostrar alertas
+      function showError(message) {
+        const errorAlert = document.getElementById("errorAlert");
+        errorAlert.textContent = message;
+        errorAlert.style.display = "block";
+        
+        setTimeout(() => {
+          errorAlert.style.display = "none";
+        }, 5000);
+      }
+      
+      function showSuccess(message) {
+        const successAlert = document.getElementById("successAlert");
+        successAlert.textContent = message;
+        successAlert.style.display = "block";
+        
+        setTimeout(() => {
+          successAlert.style.display = "none";
+        }, 5000);
+      }
+      
+      // Load the auction if ID exists
+      if (auctionId) {
+        console.log(`Loading auction #${auctionId}`);
+        
+        // Event listener for when auction.js loads
+        window.addEventListener('auctionJsLoaded', function() {
+          console.log("auction.js cargado, intentando cargar detalles...");
+          
+          // Se intenta usar las funciones de auction.js primero
+          if (typeof connectWallet === 'function' && typeof loadAuctionDetails === 'function') {
+            connectWallet().then(() => {
+              loadAuctionDetails(auctionId);
+            }).catch(err => {
+              console.error("Error con connectWallet:", err);
+              // Si falla, usar el método manual
+              loadAuctionDetailsManually(auctionId);
+            });
+          } else {
+            console.warn("Las funciones necesarias no están disponibles en auction.js, usando método alternativo");
+            loadAuctionDetailsManually(auctionId);
+          }
+        });
+        
+        // Check if auction.js is already loaded (happens if this script runs after auction.js)
+        if (typeof connectWallet === 'function' && typeof loadAuctionDetails === 'function') {
+          console.log("Las funciones ya están disponibles, ejecutando directamente");
+          connectWallet().then(() => {
+            loadAuctionDetails(auctionId);
+          }).catch(err => {
+            console.error("Error con connectWallet:", err);
+            loadAuctionDetailsManually(auctionId);
+          });
+        } else {
+          // Si después de 3 segundos no se ha cargado auction.js, usar método alternativo
+          setTimeout(() => {
+            if (document.getElementById('loading-auction').style.display !== 'none') {
+              console.warn("Timeout esperando auction.js, cargando manualmente");
+              loadAuctionDetailsManually(auctionId);
+            }
+          }, 3000);
+        }
+      } else {
+        // No auction ID provided
+        document.getElementById('loading-auction').style.display = 'none';
+        document.getElementById('no-auction-message').style.display = 'block';
       }
     });
   </script>

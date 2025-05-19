@@ -1,4 +1,5 @@
-// Adrian Auction DApp - Main JavaScript functionality
+// Adrian Auction DApp - Main JavaScript functionality (Version estable 1.0)
+// Último commit sincronizado: mayo 2024
 
 // Contract Constants
 const CONTRACT_ADDRESS = "0x1df1de9cb0cb887f08634ec66c4c8d781691f497";
@@ -1591,10 +1592,6 @@ async function placeBid(auctionId, bidAmount) {
     const bidInWei = ethers.utils.parseEther(bidAmount.toString());
     console.log("Bid amount in wei:", bidInWei.toString());
     
-    // Check if this device is mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    console.log("Is mobile device:", isMobile);
-    
     // Check allowance
     console.log("Checking current allowance for auction contract");
     const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
@@ -1605,9 +1602,7 @@ async function placeBid(auctionId, bidAmount) {
       showSuccess("Approving ADRIAN tokens for bidding...");
       
       // Only approve the exact amount needed for the bid
-      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, bidInWei, {
-        gasLimit: isMobile ? 300000 : 200000  // Increased gas limit for mobile
-      });
+      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, bidInWei);
       console.log("Approval transaction sent for exact bid amount:", approveTx.hash);
       
       showSuccess("Confirming token approval...");
@@ -1626,12 +1621,6 @@ async function placeBid(auctionId, bidAmount) {
         throw new Error("Approval completed but allowance is still insufficient");
       }
       
-      // Adding delay after token approval for mobile devices
-      if (isMobile) {
-        showSuccess("Waiting for token approval to be fully confirmed...");
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      }
-      
       showSuccess("ADRIAN tokens approved successfully for this bid");
     } else {
       console.log("Sufficient allowance for bid");
@@ -1647,13 +1636,7 @@ async function placeBid(auctionId, bidAmount) {
       bidInWei: bidInWei.toString()
     });
     
-    // Configure gas limit based on device type
-    const gasLimit = isMobile ? 500000 : 300000; // Increased gas limit for mobile
-    
-    const tx = await contract.placeBid(auctionId, bidInWei, {
-      gasLimit: gasLimit
-    });
-    
+    const tx = await contract.placeBid(auctionId, bidInWei);
     console.log("Bid transaction sent:", tx.hash);
     
     // Wait for confirmation
@@ -1970,90 +1953,30 @@ async function depositNFT(nftContract, tokenId) {
       return false;
     }
     
-    // Check if the NFT has already been approved
-    try {
-      const approvedAddress = await nftContractInstance.getApproved(tokenIdBN);
-      const isApprovedForAll = await nftContractInstance.isApprovedForAll(currentAccount, CONTRACT_ADDRESS);
-      
-      if (approvedAddress.toLowerCase() === CONTRACT_ADDRESS.toLowerCase() || isApprovedForAll) {
-        console.log("NFT is already approved for the contract");
-        showSuccess("NFT is already approved, proceeding with deposit...");
-      } else {
-        // *** APPROVAL STEP BEFORE DEPOSIT ***
-        console.log("Requesting NFT approval...");
-        showSuccess("Step 1/2: Approving NFT...");
-        
-        // Try setApprovalForAll first (more reliable for mobile)
-        try {
-          // For better mobile compatibility, use setApprovalForAll with increased gas limit
-          const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
-            gasLimit: 300000  // Increased gas limit for mobile
-          });
-          
-          console.log("Approval transaction sent:", approveTx.hash);
-          showSuccess("Confirming approval...");
-          
-          const approveReceipt = await approveTx.wait();
-          console.log("Approval confirmed:", approveReceipt);
-        } catch (approvalError) {
-          console.error("Error using setApprovalForAll, falling back to approve:", approvalError);
-          
-          // Fallback to regular approve
-          const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenIdBN, {
-            gasLimit: 300000  // Increased from 200000
-          });
-          
-          console.log("Approval transaction sent:", approveTx.hash);
-          showSuccess("Confirming approval...");
-          
-          const approveReceipt = await approveTx.wait();
-          console.log("Approval confirmed:", approveReceipt);
-        }
-        
-        // Longer pause to ensure the approval is registered (especially important for mobile)
-        showSuccess("Waiting for approval to be confirmed on the blockchain...");
-        await new Promise(resolve => setTimeout(resolve, 3000)); // Increased from 1000ms to 3000ms
-      }
-    } catch (error) {
-      console.error("Error checking NFT approval status:", error);
-      
-      // Default to trying approval anyway
-      try {
-        console.log("Requesting NFT approval...");
-        showSuccess("Step 1/2: Approving NFT...");
-        
-        // Use setApprovalForAll by default (better compatibility)
-        const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
-          gasLimit: 300000
-        });
-        
-        console.log("Approval transaction sent:", approveTx.hash);
-        showSuccess("Confirming approval...");
-        
-        const approveReceipt = await approveTx.wait();
-        console.log("Approval confirmed:", approveReceipt);
-        
-        // Longer pause
-        await new Promise(resolve => setTimeout(resolve, 3000));
-      } catch (approvalError) {
-        console.error("Error in approval:", approvalError);
-        throw new Error("Failed to approve NFT: " + (approvalError.message || "Unknown error"));
-      }
-    }
+    // *** ADD APPROVAL STEP BEFORE DEPOSIT ***
+    console.log("Requesting NFT approval...");
+    showSuccess("Step 1/2: Approving NFT...");
+    
+    // You can use approve or setApprovalForAll
+    const approveTx = await nftContractInstance.approve(CONTRACT_ADDRESS, tokenIdBN, {
+      gasLimit: 200000
+    });
+    
+    console.log("Approval transaction sent:", approveTx.hash);
+    showSuccess("Confirming approval...");
+    
+    const approveReceipt = await approveTx.wait();
+    console.log("Approval confirmed:", approveReceipt);
+    
+    // Small pause to ensure the approval is registered
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Now deposit the NFT
     showSuccess("Step 2/2: Depositing NFT...");
     const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
     
-    // Check if this device is mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    console.log("Is mobile device:", isMobile);
-    
-    // Increase gas limit for mobile devices
-    const gasLimit = isMobile ? 500000 : 300000;
-    
     const tx = await auctionContract.depositNFT(nftContract, tokenIdBN, {
-      gasLimit: gasLimit
+      gasLimit: 300000
     });
     
     console.log("Deposit transaction sent:", tx.hash);
@@ -2098,12 +2021,6 @@ async function depositNFT(nftContract, tokenId) {
       errorMessage = "You are not the owner of this NFT.";
     } else if (error.message.includes("ERC721: transfer")) {
       errorMessage = "Transfer failed. Make sure the NFT is approved for the contract.";
-    } else if (error.message.includes("internal JSON-RPC error")) {
-      errorMessage = "Network error. Please try again with higher gas limit or wait a few minutes.";
-    } else if (error.message.includes("insufficient funds")) {
-      errorMessage = "Insufficient funds for gas. Please make sure you have enough ETH for gas fees.";
-    } else if (error.message.includes("transaction underpriced")) {
-      errorMessage = "Transaction underpriced. Please try again with higher gas price.";
     }
     
     showError(errorMessage);
@@ -2172,20 +2089,8 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
   console.log("=== STARTING AUCTION CREATION ===");
   console.log("Received parameters:", { nftContract, tokenId, reservePrice, durationHours });
   
-  // Detect if user is on mobile
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  console.log("Is mobile device:", isMobile);
-  
-  // Force simplified flow for mobile devices
   // Check if simplified flow should be used
-  let useSimplifiedFlow = document.getElementById("useSimplifiedFlow")?.checked || false;
-  
-  // Force simplified flow on mobile devices
-  if (isMobile) {
-    useSimplifiedFlow = true;
-    console.log("Mobile device detected - forcing simplified flow for better compatibility");
-  }
-  
+  const useSimplifiedFlow = document.getElementById("useSimplifiedFlow")?.checked || false;
   console.log("Using simplified flow?", useSimplifiedFlow);
   
   // 1. INITIAL VERIFICATION - PARAMETER VALIDATION AND CONVERSION
@@ -2221,16 +2126,8 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
     return;
   }
 
-  // Convert to wei
-  let reservePriceWei;
-  try {
-    reservePriceWei = ethers.utils.parseUnits(formattedReservePrice, 18);
-  } catch (err) {
-    console.error("Error converting to wei:", err);
-    showError("Error with price conversion: " + err.message);
-    return;
-  }
-  
+  // Convert price to wei
+  const reservePriceWei = ethers.utils.parseEther(formattedReservePrice);
   console.log("Reserve price in ADRIAN tokens (wei):", reservePriceWei.toString());
 
   // Validate duration
@@ -2283,10 +2180,6 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         if (!depositSuccess) {
           throw new Error("Failed to deposit NFT. Please make sure the NFT is approved for the contract.");
         }
-        
-        // Add extra delay after successful deposit to ensure blockchain consistency
-        showSuccess("Waiting for NFT deposit to be fully confirmed...");
-        await new Promise(resolve => setTimeout(resolve, isMobile ? 5000 : 2000));
       } else {
         console.log("NFT already deposited by current user, proceeding to auction creation");
       }
@@ -2295,65 +2188,15 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       showSuccess("Creating auction...");
       
       try {
-        // Verify and approve ADRIAN tokens for the reserve price
-        console.log("Initializing ADRIAN token contract:", ADRIAN_TOKEN_ADDRESS);
-        const tokenContract = new ethers.Contract(ADRIAN_TOKEN_ADDRESS, ERC20_ABI, signer);
-        
-        // Check allowance
-        console.log("Checking current ADRIAN token allowance for auction contract");
-        const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-        console.log("Current ADRIAN allowance:", allowance.toString());
-        
-        // Reserve price doubled for safety margin
-        const requiredAllowance = reservePriceWei.mul(2);
-        
-        if (allowance.lt(requiredAllowance)) {
-          console.log("Insufficient ADRIAN token allowance, requesting approval...");
-          showSuccess("Approving ADRIAN tokens for auction...");
-          
-          // Revertir al método original: aprobar sólo el monto exacto necesario
-          const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, reservePriceWei, {
-            gasLimit: isMobile ? 300000 : 200000
-          });
-          console.log("ADRIAN token approval transaction sent for exact amount:", approveTx.hash);
-          
-          showSuccess("Confirming ADRIAN token approval...");
-          const approveReceipt = await approveTx.wait();
-          console.log("ADRIAN token approval receipt:", approveReceipt);
-          
-          if (approveReceipt.status === 0) {
-            throw new Error("ADRIAN token approval transaction failed");
-          }
-          
-          // Verificar la aprobación después de la transacción
-          const newAllowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
-          console.log("New ADRIAN token allowance after approval:", newAllowance.toString());
-          
-          if (newAllowance.lt(reservePriceWei)) {
-            throw new Error("ADRIAN token approval completed but allowance is still insufficient");
-          }
-          
-          // Adding delay after token approval for mobile
-          if (isMobile) {
-            showSuccess("Waiting for token approval to be fully confirmed...");
-            await new Promise(resolve => setTimeout(resolve, 3000));
-          }
-        } else {
-          console.log("Sufficient ADRIAN token allowance for auction");
-        }
-        
         // TRANSACTION #2: createAuctionFromDeposit
         // Call createAuctionFromDeposit function with exact parameters required
-        // Increase gas limit for mobile
-        const gasLimit = isMobile ? 700000 : 500000;
-        
         const tx = await auctionContract.createAuctionFromDeposit(
           nftContract,     // _nftContract: address
           tokenIdBN,       // _tokenId: uint256
           reservePriceWei, // _reservePrice: uint256
           durationSecs,    // _durationSecs: uint256
           { 
-            gasLimit: gasLimit
+            gasLimit: 500000 
           }
         );
         
@@ -2379,53 +2222,155 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
         }
       } catch (error) {
         console.error("Error in auction creation transaction:", error);
-        
-        let errorMessage = "Failed to create auction.";
-        
-        if (error.code === 4001) {
-          errorMessage = "Transaction rejected by user.";
-        } else if (error.message.includes("internal JSON-RPC error")) {
-          errorMessage = "Network error. Please try again with higher gas limit or wait a few minutes.";
-        } else if (error.message.includes("insufficient funds")) {
-          errorMessage = "Insufficient funds for gas. Please make sure you have enough ETH for gas fees.";
-        } else if (error.message.includes("transaction underpriced")) {
-          errorMessage = "Transaction underpriced. Please try again with higher gas price.";
-        } else {
-          errorMessage = "Failed to create auction: " + (error.message || "Unknown error");
-        }
-        
-        showError(errorMessage);
-        return;
+        throw new Error("Failed to create auction: " + (error.message || "Unknown error"));
       }
       
       // Update UI - Hide deposit status
       document.getElementById("depositStatus").style.display = "none";
-      
-      // Refresh auctions after successful creation
-      setTimeout(() => {
-        loadActiveAuctions();
-        if (document.getElementById("myauctions-tab").classList.contains("active")) {
-          loadUserAuctions(currentAccount);
-        }
-      }, 2000);
     } else {
-      // ... existing code for traditional flow ...
+      // TRADITIONAL FLOW (original)
+      console.log("Using traditional flow with approvals...");
+      
+      // 1. Create NFT contract instance and approve directly
+      console.log("Creating NFT contract instance:", nftContract);
+      const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
+      
+      // 2. APPROVE TOKEN USING setApprovalForAll
+      console.log("Requesting approval using setApprovalForAll...");
+      showSuccess("Requesting permission to use NFT...");
+      
+      try {
+        const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
+          gasLimit: 250000
+        });
+        console.log("Approval transaction sent:", approveTx.hash);
+        
+        showSuccess("Confirming approval...");
+        const approveReceipt = await approveTx.wait();
+        console.log("Approval confirmed:", approveReceipt);
+        
+        // Wait to ensure blockchain has processed the approval
+        console.log("Waiting 3 seconds to ensure approval has been processed...");
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+      } catch (error) {
+        if (error.code === 4001) {
+          throw new Error("Approval transaction rejected by user");
+        }
+        console.warn("Error in global approval:", error);
+      }
+      
+      // 3. Verify and approve ADRIAN tokens for the reserve price
+      console.log("Initializing ADRIAN token contract:", ADRIAN_TOKEN_ADDRESS);
+      const tokenContract = new ethers.Contract(ADRIAN_TOKEN_ADDRESS, ERC20_ABI, signer);
+      
+      // Check allowance
+      console.log("Checking current ADRIAN token allowance for auction contract");
+      const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
+      console.log("Current ADRIAN allowance:", allowance.toString());
+      
+      if (allowance.lt(reservePriceWei)) {
+        console.log("Insufficient ADRIAN token allowance, requesting approval...");
+        showSuccess("Approving ADRIAN tokens for auction...");
+        
+        // Only approve the exact amount needed for the auction
+        const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, reservePriceWei);
+        console.log("ADRIAN token approval transaction sent for exact amount:", approveTx.hash);
+        
+        showSuccess("Confirming ADRIAN token approval...");
+        const approveReceipt = await approveTx.wait();
+        console.log("ADRIAN token approval receipt:", approveReceipt);
+        
+        if (approveReceipt.status === 0) {
+          throw new Error("ADRIAN token approval transaction failed");
+        }
+        
+        // Verify approval after transaction
+        const newAllowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
+        console.log("New ADRIAN token allowance after approval:", newAllowance.toString());
+        
+        if (newAllowance.lt(reservePriceWei)) {
+          throw new Error("ADRIAN token approval completed but allowance is still insufficient");
+        }
+        
+        showSuccess("ADRIAN tokens approved successfully for this auction");
+      } else {
+        console.log("Sufficient ADRIAN token allowance for auction");
+      }
+      
+      // 4. Create auction with traditional method
+      console.log("Creating auction contract instance:", CONTRACT_ADDRESS);
+      const auctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, signer);
+      
+      showSuccess("Sending transaction to create auction...");
+      
+      // Configure gas options
+      const gasLimit = 500000;
+      
+      // Call createAuction method
+      const tx = await auctionContract.createAuction(
+        nftContract,
+        tokenIdBN,
+        reservePriceWei,
+        durationSecs,
+        { gasLimit }
+      );
+      
+      console.log("Transaction sent:", tx.hash);
+      showSuccess(`Transaction sent. Waiting for confirmation...`);
+      
+      const receipt = await tx.wait();
+      
+      if (receipt.status === 0) {
+        throw new Error("Transaction failed on the blockchain");
+      }
+      
+      // Find AuctionCreated event in logs
+      const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
+      
+      if (auctionCreatedEvent && auctionCreatedEvent.args) {
+        const auctionId = auctionCreatedEvent.args.auctionId.toString();
+        console.log("New auction ID:", auctionId);
+        showSuccess(`Auction #${auctionId} created successfully!`);
+      } else {
+        showSuccess("Auction created successfully!");
+      }
     }
-  } catch (error) {
-    console.error("Error in auction creation process:", error);
     
+    // Clean form and update UI
+    document.getElementById("createAuctionForm").reset();
+    document.getElementById("auction-details").style.display = "none";
+    document.getElementById("depositStatus").style.display = "none";
+    selectedNFT = null;
+    renderNFTGrid(document.getElementById("nftList"));
+    
+    console.log("=== AUCTION CREATION SUCCESSFUL ===");
+    
+    // Navigate to My Auctions tab
+    setTimeout(() => {
+      document.getElementById("myauctions-tab").click();
+    }, 1500);
+    
+  } catch (error) {
+    console.error("=== ERROR CREATING AUCTION ===");
+    console.error("Detailed error:", error);
+    
+    if (error.data) console.error("Error data:", error.data);
+    
+    // Detailed error analysis
     let errorMessage = "Error creating auction.";
     
     if (error.code === 4001) {
       errorMessage = "Transaction rejected by user.";
-    } else if (error.message.includes("internal JSON-RPC error")) {
-      errorMessage = "Network error. Please try again or use desktop browser for better compatibility.";
-    } else if (error.message.includes("insufficient funds")) {
-      errorMessage = "Insufficient funds for gas. Please make sure you have enough ETH for gas fees.";
+    } else if (error.message.includes("Not the depositor")) {
+      errorMessage = "You are not the depositor of this NFT.";
+    } else if (error.message.includes("NFT not in contract")) {
+      errorMessage = "NFT is not in the contract. Deposit it first.";
     } else {
-      errorMessage = error.message || "Unknown error";
+      errorMessage = error.message || errorMessage;
     }
     
+    console.error("Error message displayed:", errorMessage);
     showError(errorMessage);
   }
 }
@@ -3099,12 +3044,7 @@ async function loadAuctionDetails(auctionId) {
     // Update the UI with auction details
     document.getElementById('detail-nft-image').src = imageUrl;
     document.getElementById('detail-title').textContent = nftName;
-    // Verificar si existe el elemento antes de intentar modificarlo
-    if (document.getElementById('status-badges')) {
-      document.getElementById('status-badges').innerHTML = statusBadges;
-    } else if (document.getElementById('detail-status-badges')) {
-      document.getElementById('detail-status-badges').innerHTML = statusBadges;
-    }
+    document.getElementById('status-badges').innerHTML = statusBadges;
     document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
     document.getElementById('detail-contract').textContent = formatAddress(nftContract);
     document.getElementById('detail-token-id').textContent = tokenId;
@@ -3113,7 +3053,6 @@ async function loadAuctionDetails(auctionId) {
     document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? `${formatAdrian(highestBid)}` : "No bids yet";
     document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddress(highestBidder) : "No bidder yet";
     
-    // Time display
     if (isActive && timeRemaining > 0) {
       document.getElementById('detail-time-label').textContent = "Time Remaining";
       document.getElementById('detail-time-value').textContent = formatTimeRemaining(endTime);
@@ -3137,6 +3076,7 @@ async function loadAuctionDetails(auctionId) {
       }, 1000);
     } else {
       document.getElementById('detail-time-label').textContent = "Status";
+      
       if (isActive) {
         document.getElementById('detail-time-value').textContent = "Active (Waiting for finalization)";
       } else if (isFinalized) {
@@ -3151,53 +3091,35 @@ async function loadAuctionDetails(auctionId) {
     
     if (isActive && !isFinalized) {
       if (isOwner && endTime <= now) {
-        actionButtons += `<button class="btn-action w-100 mb-2" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="finalizeAuction(${auctionId}); event.stopPropagation();">Finalize Auction</button>`;
       } else if (isOwner && highestBid.isZero()) {
-        actionButtons += `<button class="btn-action w-100 mb-2" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="cancelAuction(${auctionId}); event.stopPropagation();">Cancel Auction</button>`;
       } else if (!isOwner) {
-        // NEW: Custom button text for outbid users
-        const buttonText = isOutbid ? "Outbid! Bid Again" : "Place Bid";
-        const buttonClass = isOutbid ? "btn-action w-100 mb-2 btn-danger" : "btn-action w-100 mb-2";
-        
-        actionButtons += `<button class="${buttonClass}" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">${buttonText}</button>`;
+        actionButtons = `<button class="btn-action w-100 mb-2" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId}); event.stopPropagation();">Place Bid</button>`;
       }
     } else if (isOwner && !isActive && isFinalized && 
-              (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
-      // Show relist button only when:
-      // 1. User is the owner of the auction
-      // 2. Auction is not active
-      // 3. Auction is finalized
-      // 4. Auction had no bidder or reserve price wasn't met
-      actionButtons += `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
+             (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
+      // Mostrar botón de relist solo cuando:
+      // 1. El usuario es el dueño de la subasta
+      // 2. La subasta no está activa
+      // 3. La subasta está finalizada
+      // 4. La subasta no tuvo postor o no se alcanzó el precio de reserva
+      actionButtons = `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId}); event.stopPropagation();">Relist</button>`;
     }
     
-    // Add share button to all auctions
-    actionButtons += `<button class="btn-action w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
-    
-    // Add button to go back to all auctions
+    // Add back to all auctions button
     actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
     
     document.getElementById('detail-action-container').innerHTML = actionButtons;
     
-    // Hide loading indicator and show auction details
+    // Show the auction details container
     document.getElementById('loading-auction').style.display = 'none';
     document.getElementById('auction-details-container').style.display = 'block';
     
-    // Load bid history
-    await loadBidHistory(auctionId);
-    
   } catch (error) {
-    console.error("Error loading auction details:", error);
+    console.error(`Error loading auction #${auctionId}:`, error);
     document.getElementById('loading-auction').style.display = 'none';
-    
-    // Verificar si existen los elementos antes de intentar modificarlos
-    if (document.getElementById('error-message') && document.getElementById('error-container')) {
-      document.getElementById('error-message').innerHTML = "Error loading auction details. Please try again later.";
-      document.getElementById('error-container').style.display = 'block';
-    } else {
-      // Si no existen, usar el elemento no-auction-message como fallback
-      document.getElementById('no-auction-message').style.display = 'block';
-    }
+    document.getElementById('no-auction-message').style.display = 'block';
   }
 }
 
@@ -4160,519 +4082,335 @@ async function showAuctionDetails(auctionId) {
 
 // Function to load auction details page based on URL parameter
 async function loadAuctionDetailsPage(auctionId = null) {
-  console.log(`Loading auction details page for ID: ${auctionId}`);
+  console.log("Loading auction details page...");
   
   try {
-    // Si no hay ID de subasta, mostrar error y salir
+    // If no auctionId provided, try to get from URL
     if (!auctionId) {
-      console.error("No se proporcionó ID de subasta");
-      document.getElementById('loading-auction').style.display = 'none';
-      document.getElementById('no-auction-message').style.display = 'block';
-      return;
-    }
-    
-    // Verificar que tenemos los contratos inicializados
-    if (!readOnlyAuctionContract) {
-      console.log("Initializing read-only contract first");
-      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
-      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
-      console.log("Contrato inicializado para lectura");
-    }
-    
-    // Obtener detalles de la subasta - añadido try/catch adicional y más logging
-    console.log(`Intentando obtener detalles para la subasta #${auctionId}...`);
-    
-    try {
-      // Convertir a BigNumber de manera segura
-      const auctionIdBN = ethers.BigNumber.from(auctionId);
-      console.log(`ID de subasta convertido a BigNumber: ${auctionIdBN.toString()}`);
+      const urlParams = new URLSearchParams(window.location.search);
+      auctionId = urlParams.get('id');
       
-      // Llamar al contrato con logging adicional
-      console.log(`Llamando a getManyAuctionDetails con: [${auctionIdBN.toString()}]`);
-      const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionIdBN]);
-      
-      console.log(`Respuesta del contrato:`, auctionDetails);
-      
-      if (!auctionDetails || auctionDetails.length === 0) {
-        console.error(`Subasta #${auctionId} no encontrada - array vacío devuelto por el contrato`);
-        throw new Error(`Auction #${auctionId} not found`);
+      if (!auctionId) {
+        document.getElementById('loading-auction').style.display = 'none';
+        document.getElementById('error-message').innerHTML = "No auction ID specified";
+        document.getElementById('error-container').style.display = 'block';
+        return;
       }
-      
-      const auction = auctionDetails[0];
-      
-      // Log de los detalles de la subasta
-      console.log(`Detalles de la subasta #${auctionId}:`, {
-        nftContract: auction.nftContract,
-        tokenId: auction.tokenId?.toString() || "N/A",
-        seller: auction.seller,
-        reservePrice: auction.reservePrice?.toString() || "N/A",
-        endTime: auction.endTime?.toString() || "N/A",
-        highestBidder: auction.highestBidder,
-        highestBid: auction.highestBid?.toString() || "N/A",
-        active: auction.active ? "Sí" : "No",
-        finalized: auction.finalized ? "Sí" : "No"
-      });
-      
-      // Actualizar la UI con los detalles de la subasta
-      // ...
-      
-      // Mostrar el auction-details-container (en caso de que estuviera oculto)
-      document.getElementById('loading-auction').style.display = 'none';
-      document.getElementById('auction-details-container').style.display = 'block';
-      
-      // Cargar el historial de pujas si existe la función
-      if (typeof loadBidHistory === 'function') {
-        await loadBidHistory(auctionId);
-      }
-      
-      return auction;
-    } catch (contractError) {
-      console.error(`Error al llamar al contrato para la subasta #${auctionId}:`, contractError);
-      
-      // Intentar proporcionar más información sobre el error
-      if (contractError.code === 'CALL_EXCEPTION') {
-        console.error("Error CALL_EXCEPTION: posiblemente la subasta no existe en el contrato");
-      }
-      
-      throw new Error(`Error getting auction details: ${contractError.message}`);
-    }
-  } catch (error) {
-    console.error(`Error loading auction #${auctionId}:`, error);
-    document.getElementById('loading-auction').style.display = 'none';
-    
-    // Usar el elemento correcto dependiendo de cuál exista
-    if (document.getElementById('error-container') && document.getElementById('error-message')) {
-      document.getElementById('error-message').innerHTML = `Error loading auction details: ${error.message}`;
-      document.getElementById('error-container').style.display = 'block';
-    } else {
-      document.getElementById('no-auction-message').style.display = 'block';
     }
     
-    return null;
-  }
-}
-
-// Función para obtener el historial de pujas para una subasta específica
-async function getAuctionBidHistory(auctionId) {
-  try {
-    console.log(`Getting bid history for auction #${auctionId}...`);
+    console.log(`Loading details for auction #${auctionId}`);
     
-    // Create filter for BidPlaced events with the specific auctionId
-    const filter = readOnlyAuctionContract.filters.BidPlaced(auctionId);
-    
-    // Get events from block 0 to the current block
-    const events = await readOnlyAuctionContract.queryFilter(filter, 0, 'latest');
-    
-    console.log(`Found ${events.length} bid events for auction #${auctionId}`);
-    
-    // Process events to extract relevant information
-    const bidHistory = await Promise.all(events.map(async (event) => {
-      // args contain the event parameters: auctionId, bidder, amount
-      const { bidder, amount } = event.args;
-      
-      // Get the block timestamp for this event
-      const block = await readOnlyProvider.getBlock(event.blockNumber);
-      
-      return {
-        bidder,
-        amount: amount,
-        formattedAmount: formatAdrian(amount),
-        timestamp: block.timestamp,
-        date: new Date(block.timestamp * 1000).toLocaleString(),
-        txHash: event.transactionHash
-      };
-    }));
-    
-    // Sort by timestamp, with the most recent bids first
-    bidHistory.sort((a, b) => b.timestamp - a.timestamp);
-    
-    return bidHistory;
-    
-  } catch (error) {
-    console.error(`Error getting bid history:`, error);
-    return [];
-  }
-}
-
-// Update the loadBidHistory function to use the event-based history
-async function loadBidHistory(auctionId) {
-  console.log(`Loading bid history for auction #${auctionId}...`);
-  
-  // Create a container for bid history if it doesn't exist
-  if (!document.getElementById('bid-history-container')) {
-    console.log("Creating bid history section...");
-    
-    // Find insertion point after main details
-    const detailsContainer = document.getElementById('auction-details-container');
-    
-    if (!detailsContainer) {
-      console.warn("Cannot find auction details container");
-      return;
-    }
-    
-    // Create and add history section
-    const historySection = document.createElement('div');
-    historySection.className = 'card mt-4';
-    historySection.innerHTML = `
-      <div class="section-title">Bid History</div>
-      <div id="bid-history-container">
-        <div id="loading-history" class="text-center p-4">
-          <div class="loading-spinner"></div>
-          <p class="mt-3">Loading bid history...</p>
-        </div>
-        <div id="bid-history-list" class="list-group"></div>
-        <div id="no-bids-message" class="alert alert-info mt-3" style="display: none;">
-          No bids have been placed on this auction yet.
-        </div>
-      </div>
-    `;
-    
-    detailsContainer.appendChild(historySection);
-  }
-  
-  try {
-    // Verify we have contracts initialized
+    // Make sure auction contract is available
     if (!readOnlyAuctionContract) {
       console.error("Auction contract not initialized");
-      document.getElementById('loading-history').style.display = 'none';
-      document.getElementById('no-bids-message').textContent = "Could not load bid history. Try refreshing the page.";
-      document.getElementById('no-bids-message').style.display = 'block';
-      return;
+      
+      // Attempt manual initialization as fallback
+      await initializeContract();
+      
+      if (!readOnlyAuctionContract) {
+        document.getElementById('loading-auction').style.display = 'none';
+        document.getElementById('error-message').innerHTML = "Could not connect to blockchain. Please try again later.";
+        document.getElementById('error-container').style.display = 'block';
+        return;
+      }
     }
     
-    // Get auction details
+    // Fetch auction details
     const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionId]);
     
     if (!auctionDetails || auctionDetails.length === 0) {
-      console.warn("Could not fetch auction details");
-      document.getElementById('loading-history').style.display = 'none';
-      document.getElementById('no-bids-message').textContent = "Could not load auction data.";
-      document.getElementById('no-bids-message').style.display = 'block';
-      return;
-    }
-    
-    const auction = auctionDetails[0];
-    const highestBidder = auction.highestBidder;
-    const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
-    
-    // If no bids, show message
-    if (highestBid.isZero() || highestBidder === ethers.constants.AddressZero) {
-      document.getElementById('loading-history').style.display = 'none';
-      document.getElementById('no-bids-message').style.display = 'block';
-      return;
-    }
-    
-    // Get bid history from events
-    const bidHistory = await getAuctionBidHistory(auctionId);
-    
-    const bidHistoryList = document.getElementById('bid-history-list');
-    bidHistoryList.innerHTML = '';
-    
-    if (bidHistory.length === 0) {
-      // If we couldn't get history from events but we know there's a highest bid
-      // show at least the current highest bid
-      const bidItem = document.createElement('div');
-      bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-      
-      bidItem.innerHTML = `
-        <div>
-          <div class="fw-bold">${formatAddress(highestBidder)}</div>
-          <small class="text-muted">Current winning bid</small>
-        </div>
-        <span class="badge bg-primary rounded-pill">${formatAdrian(highestBid)}</span>
-      `;
-      
-      bidHistoryList.appendChild(bidItem);
-    } else {
-      // Show complete bid history
-      bidHistory.forEach((bid, index) => {
-        const bidItem = document.createElement('div');
-        bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-        
-        // Highlight if this is the current winning bid
-        const isWinningBid = index === 0;
-        const badgeClass = isWinningBid ? 'bg-success' : 'bg-primary';
-        const bidStatus = isWinningBid ? 'Current winning bid' : '';
-        
-        bidItem.innerHTML = `
-          <div>
-            <div class="fw-bold">${formatAddress(bid.bidder)}</div>
-            <small class="text-muted">${bid.date}</small>
-            ${isWinningBid ? `<div class="mt-1"><span class="badge bg-success">Winning Bid</span></div>` : ''}
-          </div>
-          <span class="badge ${badgeClass} rounded-pill">${bid.formattedAmount}</span>
-        `;
-        
-        bidHistoryList.appendChild(bidItem);
-        
-        // Add a link to view the transaction on explorer if it's not the winning bid
-        if (!isWinningBid) {
-          const txLink = document.createElement('div');
-          txLink.className = 'mt-1 text-end';
-          txLink.innerHTML = `
-            <a href="https://basescan.org/tx/${bid.txHash}" target="_blank" class="text-decoration-none" style="font-size: 0.8rem;">
-              <small>View Transaction</small>
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
-                <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
-                <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
-              </svg>
-            </a>
-          `;
-          bidItem.appendChild(txLink);
-        }
-      });
-    }
-    
-    // Show history list and hide loading
-    document.getElementById('loading-history').style.display = 'none';
-    bidHistoryList.style.display = 'block';
-    
-    console.log("Bid history loaded successfully");
-    
-  } catch (error) {
-    console.error("Error loading bid history:", error);
-    document.getElementById('loading-history').style.display = 'none';
-    document.getElementById('no-bids-message').textContent = "Error loading bid history. Please try again later.";
-    document.getElementById('no-bids-message').style.display = 'block';
-  }
-}
-
-// Función para renderizar una tarjeta de subasta
-function renderAuctionCard(auction, container, showExtendedInfo = true) {
-  const auctionId = auction.id || 0;
-  const nftContract = auction.nftContract || ethers.constants.AddressZero;
-  const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
-  const seller = auction.seller || ethers.constants.AddressZero;
-  const highestBidder = auction.highestBidder || ethers.constants.AddressZero;
-  const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
-  const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
-  
-  // Conversión de tiempo
-  let endTime;
-  try {
-    endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
-  } catch (err) {
-    console.error("Error converting endTime:", err);
-    endTime = 0;
-  }
-  
-  // Valores booleanos
-  const isActive = auction.active === true || auction.active === 1;
-  const isFinalized = auction.finalized === true || auction.finalized === 1;
-  
-  const now = Math.floor(Date.now() / 1000);
-  const timeRemaining = endTime - now;
-  
-  // Información por defecto del NFT
-  let imageUrl = 'https://placehold.co/400x400?text=NFT+Image';
-  let nftName = `NFT #${tokenId}`;
-  
-  if (auction.metadata) {
-    // Si ya tenemos metadata, usarla
-    nftName = auction.metadata.name || nftName;
-    imageUrl = auction.metadata.image || imageUrl;
-    
-    // Formatear URL IPFS si es necesario
-    if (imageUrl.startsWith('ipfs://')) {
-      const ipfsHash = imageUrl.replace('ipfs://', '');
-      imageUrl = ipfsHash.startsWith('ipfs/') 
-        ? `https://ipfs.io/${ipfsHash}` 
-        : `https://ipfs.io/ipfs/${ipfsHash}`;
-    }
-  }
-  
-  // Crear elemento card
-  const card = document.createElement('div');
-  card.className = 'auction-card';
-  card.dataset.auctionId = auctionId;
-  
-  // Hacer toda la tarjeta clicable
-  card.style.cursor = 'pointer';
-  card.onclick = function() {
-    showAuctionDetails(auctionId);
-  };
-  
-  // Agregar indicador visual si el usuario tiene la puja más alta
-  let userBidStatus = '';
-  if (currentAccount && isActive) {
-    if (highestBidder.toLowerCase() === currentAccount.toLowerCase()) {
-      userBidStatus = `<div class="user-bid-status winning">
-        <span>You are winning!</span>
-      </div>`;
-    } else if (auction.userHasBid) {
-      userBidStatus = `<div class="user-bid-status outbid">
-        <span>You've been outbid!</span>
-      </div>`;
-    }
-  }
-  
-  // Estado de la subasta
-  let statusBadge = '';
-  if (isActive) {
-    if (timeRemaining <= 3600) { // Último hora
-      statusBadge = '<span class="badge status-ending">Ending Soon</span>';
-    } else {
-      statusBadge = '<span class="badge status-live">Live</span>';
-    }
-    
-    // Si se ha superado el precio de reserva
-    if (highestBid.gte(reservePrice) && !reservePrice.isZero()) {
-      statusBadge += ' <span class="badge status-reserve-met">Reserve Met</span>';
-    }
-  } else {
-    if (isFinalized) {
-      statusBadge = '<span class="badge status-ended">Ended</span>';
-    } else {
-      statusBadge = '<span class="badge status-inactive">Inactive</span>';
-    }
-  }
-  
-  card.innerHTML = `
-    <div class="auction-img-container">
-      <img src="${imageUrl}" alt="${nftName}" class="auction-img" onerror="this.onerror=null; this.src='https://placehold.co/400x400?text=NFT+Image'">
-      ${userBidStatus}
-    </div>
-    <div class="auction-info">
-      <div class="auction-title">${nftName}</div>
-      <div class="auction-subtitle">Auction #${auctionId}</div>
-      <div class="auction-status">
-        ${statusBadge}
-      </div>
-      <div class="auction-price">
-        ${highestBid.gt(0) 
-          ? `<strong>Current Bid:</strong> ${formatAdrian(highestBid)}`
-          : `<strong>Reserve Price:</strong> ${formatAdrian(reservePrice)}`
-        }
-      </div>
-      <div class="auction-time">
-        ${isActive && timeRemaining > 0 
-          ? `<strong>Ends:</strong> ${formatTimeRemaining(endTime)}`
-          : isFinalized 
-            ? `<strong>Winner:</strong> ${formatAddress(highestBidder)}`
-            : `<strong>Status:</strong> ${isActive ? 'Active' : 'Inactive'}`
-        }
-      </div>
-    </div>
-  `;
-  
-  // Para tarjetas en la sección "Your Bids", añadir botón específico
-  if (auction.section === 'mybids' && isActive && timeRemaining > 0) {
-    const bidAgainBtn = document.createElement('button');
-    bidAgainBtn.className = 'btn-action btn-sm mt-2';
-    bidAgainBtn.textContent = highestBidder.toLowerCase() === currentAccount.toLowerCase() 
-      ? 'Increase Bid' 
-      : 'Outbid! Bid Again';
-    
-    bidAgainBtn.onclick = function(event) {
-      event.stopPropagation(); // Evita que el clic propague al card
-      openBidModal(auctionId, highestBid, reservePrice, nftContract, tokenId);
-    };
-    
-    card.querySelector('.auction-info').appendChild(bidAgainBtn);
-  }
-  
-  container.appendChild(card);
-  return card;
-}
-
-// Reemplazar la función anterior de renderizado de tarjetas con esta nueva implementación
-// ... existing code ...
-
-// Función para probar la existencia de una subasta y resolver problemas de subastas que aparecen como no existentes
-async function repairAuctionDetails(auctionId) {
-  console.log(`=== REPARACIÓN DE DETALLES DE SUBASTA #${auctionId} ===`);
-  
-  if (!auctionId) {
-    console.error("No se proporcionó ID de subasta");
-    return null;
-  }
-  
-  try {
-    console.log("1. Inicializando contrato de solo lectura...");
-    
-    // Inicializar contrato de solo lectura si no existe
-    let provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-    let contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, provider);
-    
-    // Convertir ID a BigNumber de forma segura
-    console.log("2. Convirtiendo ID a BigNumber...");
-    const auctionIdBN = ethers.BigNumber.from(auctionId);
-    console.log(`ID convertido: ${auctionIdBN.toString()}`);
-    
-    console.log("3. Verificando si la subasta está en la lista de subastas activas...");
-    try {
-      const activeAuctionsCount = await contract.getActiveAuctionsCount();
-      console.log(`Total de subastas activas: ${activeAuctionsCount.toString()}`);
-      
-      if (activeAuctionsCount.gt(0)) {
-        // Obtener todas las subastas activas
-        const activeAuctions = await contract.getActiveAuctions(0, activeAuctionsCount);
-        console.log(`Subastas activas obtenidas: ${activeAuctions.length}`);
-        
-        // Buscar el ID en la lista de subastas activas
-        const isActive = activeAuctions.some(id => id.toString() === auctionIdBN.toString());
-        console.log(`¿La subasta está activa? ${isActive ? 'Sí' : 'No'}`);
-      }
-    } catch (error) {
-      console.error("Error al verificar subastas activas:", error);
-    }
-    
-    console.log("4. Intentando obtener detalles directamente con getManyAuctionDetails...");
-    try {
-      const auctionDetails = await contract.getManyAuctionDetails([auctionIdBN]);
-      
-      if (!auctionDetails || auctionDetails.length === 0) {
-        console.error("La subasta no fue encontrada en el contrato");
-        return null;
-      }
-      
-      const auction = auctionDetails[0];
-      console.log("5. Detalles de la subasta recuperados:", {
-        nftContract: auction.nftContract,
-        tokenId: auction.tokenId?.toString() || "N/A",
-        seller: auction.seller,
-        reservePrice: auction.reservePrice?.toString() || "N/A",
-        endTime: auction.endTime?.toString() || "N/A",
-        highestBidder: auction.highestBidder,
-        highestBid: auction.highestBid?.toString() || "N/A",
-        active: auction.active ? "Sí" : "No",
-        finalized: auction.finalized ? "Sí" : "No"
-      });
-      
-      console.log("6. Actualizando interfaz de usuario con los datos recuperados...");
-      
-      // Mostrar el auction-details-container y ocultar el mensaje de error
       document.getElementById('loading-auction').style.display = 'none';
-      
-      if (document.getElementById('no-auction-message')) {
-        document.getElementById('no-auction-message').style.display = 'none';
-      }
-      
-      if (document.getElementById('error-container')) {
-        document.getElementById('error-container').style.display = 'none';
-      }
-      
-      if (document.getElementById('auction-details-container')) {
-        document.getElementById('auction-details-container').style.display = 'block';
-      }
-      
-      // Iniciar la carga normal ahora que sabemos que la subasta existe
-      console.log("7. Reintentando carga normal con loadAuctionDetailsPage...");
-      try {
-        await loadAuctionDetailsPage(auctionId);
-        console.log("=== REPARACIÓN COMPLETADA CON ÉXITO ===");
-        return auction;
-      } catch (loadError) {
-        console.error("Error en loadAuctionDetailsPage después de la reparación:", loadError);
-        console.log("=== REPARACIÓN PARCIAL COMPLETADA ===");
-        return auction;
-      }
-    } catch (detailsError) {
-      console.error("Error obteniendo detalles de la subasta:", detailsError);
-      return null;
+      document.getElementById('error-message').innerHTML = `Auction #${auctionId} not found`;
+      document.getElementById('error-container').style.display = 'block';
+      return;
     }
+    
+    // Process auction data
+    const auction = auctionDetails[0];
+    console.log(`Raw auction data for #${auctionId}:`, auction);
+    
+    // CRITICAL FIX - Extract and convert auction data safely
+    const nftContract = auction.nftContract || ethers.constants.AddressZero;
+    const tokenId = auction.tokenId ? ethers.BigNumber.from(auction.tokenId).toString() : '0';
+    const seller = auction.seller || ethers.constants.AddressZero;
+    const reservePrice = auction.reservePrice ? ethers.BigNumber.from(auction.reservePrice) : ethers.BigNumber.from(0);
+    const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+    const highestBidder = auction.highestBidder || ethers.constants.AddressZero;
+    
+    // CRITICAL FIX - Handle endTime correctly
+    let endTime;
+    try {
+      endTime = auction.endTime ? parseInt(auction.endTime.toString()) : 0;
+      console.log(`Converted endTime: ${endTime}`);
+    } catch (err) {
+      console.error("Error converting endTime:", err);
+      endTime = 0;
+    }
+    
+    // CRITICAL FIX - Handle boolean values
+    const isActive = auction.active === true || auction.active === 1;
+    const isFinalized = auction.finalized === true || auction.finalized === 1;
+    
+    const now = Math.floor(Date.now() / 1000);
+    const timeRemaining = endTime - now;
+    
+    // Check if user is the seller or highest bidder
+    const isOwner = currentAccount && seller.toLowerCase() === currentAccount.toLowerCase();
+    const isHighestBidder = currentAccount && highestBidder.toLowerCase() === currentAccount.toLowerCase();
+    
+    // Check if user has bid but is not the highest bidder
+    let hasUserBid = false;
+    let isOutbid = false;
+    
+    if (currentAccount) {
+      try {
+        // Check if user has bid on this auction
+        const userBids = await readOnlyAuctionContract.getUserBids(currentAccount);
+        hasUserBid = userBids.some(bid => bid.toString() === auctionId.toString());
+        
+        // User has bid but is not highest bidder = outbid
+        isOutbid = hasUserBid && !isHighestBidder && 
+                   highestBidder !== ethers.constants.AddressZero;
+        
+        console.log(`User bid status:`, { hasUserBid, isHighestBidder, isOutbid });
+      } catch (error) {
+        console.warn("Could not check user bid status:", error);
+      }
+    }
+    
+    // Try to fetch NFT image from chain if possible
+    let imageUrl = 'https://placehold.co/600x600?text=NFT+Image';
+    let nftName = `NFT #${tokenId}`;
+    
+    // Improved image loading
+    if (nftContract && nftContract !== ethers.constants.AddressZero) {
+      try {
+        console.log(`Fetching metadata for NFT at contract ${nftContract}, token ID ${tokenId}`);
+        
+        // Create a temporary NFT contract to get the tokenURI
+        const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, readOnlyProvider);
+        
+        try {
+          const tokenURI = await nftContractInstance.tokenURI(tokenId);
+          console.log(`Token URI:`, tokenURI);
+          
+          if (tokenURI) {
+            // Try to fetch metadata
+            let metadata = null;
+            
+            if (tokenURI.startsWith('ipfs://')) {
+              const ipfsHash = tokenURI.replace('ipfs://', '');
+              let ipfsUrl;
+              if (ipfsHash.startsWith('ipfs/')) {
+                ipfsUrl = `https://ipfs.io/${ipfsHash}`;
+              } else {
+                ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
+              }
+              
+              try {
+                console.log(`Fetching metadata from IPFS:`, ipfsUrl);
+                const response = await fetch(ipfsUrl);
+                metadata = await response.json();
+              } catch (error) {
+                console.warn("Error fetching metadata from IPFS:", error);
+              }
+            } else if (tokenURI.startsWith('http')) {
+              try {
+                console.log(`Fetching metadata from HTTP:`, tokenURI);
+                const response = await fetch(tokenURI);
+                metadata = await response.json();
+              } catch (error) {
+                console.warn("Error fetching HTTP metadata:", error);
+              }
+            }
+            
+            if (metadata) {
+              console.log("Metadata fetched:", metadata);
+              
+              if (metadata.name) {
+                nftName = metadata.name;
+              }
+              
+              if (metadata.image) {
+                if (metadata.image.startsWith('ipfs://')) {
+                  const imageHash = metadata.image.replace('ipfs://', '');
+                  if (imageHash.startsWith('ipfs/')) {
+                    imageUrl = `https://ipfs.io/${imageHash}`;
+                  } else {
+                    imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+                  }
+                } else {
+                  imageUrl = metadata.image;
+                }
+                console.log(`Image URL:`, imageUrl);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn(`Error fetching tokenURI:`, err);
+        }
+      } catch (error) {
+        console.warn(`Error loading NFT image for auction #${auctionId}:`, error);
+      }
+    }
+    
+    // Update OG tags for sharing
+    const ogTitle = document.getElementById('og-title');
+    const ogDesc = document.getElementById('og-description');
+    const ogImage = document.getElementById('og-image');
+    const ogUrl = document.getElementById('og-url');
+    
+    const twitterTitle = document.getElementById('twitter-title');
+    const twitterDesc = document.getElementById('twitter-description');
+    const twitterImage = document.getElementById('twitter-image');
+    
+    if (ogTitle) ogTitle.setAttribute('content', `${nftName} - Adrian Auction`);
+    if (ogDesc) ogDesc.setAttribute('content', `Bid on this NFT auction featuring ${nftName} with a reserve price of ${formatAdrian(reservePrice)}. Current bid: ${formatAdrian(highestBid)}`);
+    if (ogImage) ogImage.setAttribute('content', imageUrl);
+    if (ogUrl) ogUrl.setAttribute('content', window.location.href);
+    
+    if (twitterTitle) twitterTitle.setAttribute('content', `${nftName} - Adrian Auction`);
+    if (twitterDesc) twitterDesc.setAttribute('content', `Bid on this NFT auction featuring ${nftName} with a reserve price of ${formatAdrian(reservePrice)}. Current bid: ${formatAdrian(highestBid)}`);
+    if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+    
+    // Set page title
+    document.title = `${nftName} - Adrian Auction`;
+    
+    // Create status badges
+    let statusBadges = '';
+    
+    if (isActive) {
+      if (endingSoon) {
+        statusBadges += '<span class="auction-status status-ending">🔥 Ending Soon</span>';
+      } else {
+        statusBadges += '<span class="auction-status status-live">🔄 Active</span>';
+      }
+      
+      if (reserveMet) {
+        statusBadges += '<span class="auction-status status-reserve-met">✅ Reserve Met</span>';
+      }
+      
+      if (isHighestBidder) {
+        statusBadges += '<span class="auction-status status-live">🏆 You are Winning</span>';
+      }
+      
+      // NEW: Add Outbid badge
+      if (isOutbid) {
+        statusBadges += '<span class="auction-status status-outbid" style="background-color: #ffcccb; color: #dc3545;">⚠️ You\'ve Been Outbid</span>';
+      }
+    } else {
+      if (isFinalized) {
+        if (hasWinner) {
+          statusBadges += '<span class="auction-status">✅ Ended with Winner</span>';
+        } else {
+          statusBadges += '<span class="auction-status">❌ Ended without Winner</span>';
+        }
+      } else {
+        statusBadges += '<span class="auction-status">⏸️ Inactive</span>';
+      }
+    }
+    
+    if (isOwner) {
+      statusBadges += '<span class="auction-status">👑 Your Auction</span>';
+    }
+    
+    // Populate auction details in the page
+    document.getElementById('detail-nft-image').src = imageUrl;
+    document.getElementById('detail-title').textContent = nftName;
+    document.getElementById('status-badges').innerHTML = statusBadges;
+    document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
+    document.getElementById('detail-contract').textContent = formatAddress(nftContract);
+    document.getElementById('detail-token-id').textContent = tokenId;
+    document.getElementById('detail-seller').textContent = formatAddress(seller);
+    document.getElementById('detail-reserve-price').textContent = formatAdrian(reservePrice);
+    document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? formatAdrian(highestBid) : "No bids yet";
+    document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddress(highestBidder) : "No bidder yet";
+    
+    // Time display
+    if (isActive && timeRemaining > 0) {
+      document.getElementById('detail-time-label').textContent = "Time Remaining";
+      document.getElementById('detail-time-value').textContent = formatTimeRemaining(endTime);
+      
+      // Set up time counter update
+      const timeCounterElement = document.getElementById('detail-time-value');
+      
+      // Clear any existing interval
+      if (window.timeUpdateInterval) {
+        clearInterval(window.timeUpdateInterval);
+      }
+      
+      // Update time every second
+      window.timeUpdateInterval = setInterval(() => {
+        const now = Math.floor(Date.now() / 1000);
+        const timeRemaining = endTime - now;
+        
+        if (timeRemaining <= 0) {
+          clearInterval(window.timeUpdateInterval);
+          timeCounterElement.textContent = "Auction ended";
+          
+          // Reload page to update status
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
+        } else {
+          timeCounterElement.textContent = formatTimeRemaining(endTime);
+        }
+      }, 1000);
+    } else {
+      document.getElementById('detail-time-label').textContent = "Status";
+      if (isActive) {
+        document.getElementById('detail-time-value').textContent = "Active";
+      } else if (isFinalized) {
+        document.getElementById('detail-time-value').textContent = "Finalized";
+      } else {
+        document.getElementById('detail-time-value').textContent = "Inactive";
+      }
+    }
+    
+    // Create action buttons based on auction state and user role
+    let actionButtons = '';
+    
+    if (isActive && !isFinalized) {
+      if (isOwner && endTime <= now) {
+        actionButtons += `<button class="btn-action w-100 mb-2" onclick="finalizeAuction(${auctionId})">Finalize Auction</button>`;
+      } else if (isOwner && highestBid.isZero()) {
+        actionButtons += `<button class="btn-action w-100 mb-2" onclick="cancelAuction(${auctionId})">Cancel Auction</button>`;
+      } else if (!isOwner) {
+        // NEW: Custom button text for outbid users
+        const buttonText = isOutbid ? "Outbid! Bid Again" : "Place Bid";
+        const buttonClass = isOutbid ? "btn-action w-100 mb-2 btn-danger" : "btn-action w-100 mb-2";
+        
+        actionButtons += `<button class="${buttonClass}" onclick="openBidModal(${auctionId}, '${highestBid}', '${reservePrice}', '${nftContract}', ${tokenId})">${buttonText}</button>`;
+      }
+    } else if (isOwner && !isActive && isFinalized && 
+              (auction.highestBidder === ethers.constants.AddressZero || highestBid.lt(reservePrice))) {
+      // Show relist button only when:
+      // 1. User is the owner of the auction
+      // 2. Auction is not active
+      // 3. Auction is finalized
+      // 4. Auction had no bidder or reserve price wasn't met
+      actionButtons += `<button class="btn-action w-100 mb-2" onclick="showRelistModal(${auctionId})">Relist</button>`;
+    }
+    
+    // Add share button to all auctions
+    actionButtons += `<button class="btn-action w-100 mb-2" onclick="shareAuction(${auctionId}, '${encodeURIComponent(nftName)}')">Share Auction</button>`;
+    
+    // Add button to go back to all auctions
+    actionButtons += `<a href="index.html" class="btn-secondary w-100">All Auctions</a>`;
+    
+    document.getElementById('detail-action-container').innerHTML = actionButtons;
+    
+    // Hide loading indicator and show auction details
+    document.getElementById('loading-auction').style.display = 'none';
+    document.getElementById('auction-details-container').style.display = 'block';
+    
+    // Load bid history
+    await loadBidHistory(auctionId);
+    
   } catch (error) {
-    console.error("Error en repairAuctionDetails:", error);
-    return null;
+    console.error("Error loading auction details:", error);
+    document.getElementById('loading-auction').style.display = 'none';
+    document.getElementById('error-message').innerHTML = "Error loading auction details. Please try again later.";
+    document.getElementById('error-container').style.display = 'block';
   }
 }

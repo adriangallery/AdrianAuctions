@@ -597,92 +597,108 @@
     </div>
     
     <!-- Auction Details -->
-    <div id="auction-details-container" class="card" style="display: none;">
+    <div class="container mt-4" id="auction-details-container" style="display: none;">
       <div class="auction-detail-grid">
-        <div class="image-section">
+        <div class="nft-details">
           <div class="nft-image-container">
-            <img id="detail-nft-image" src="https://placehold.co/600x600?text=NFT+Image" class="nft-image" alt="NFT Image">
+            <img id="detail-nft-image" class="nft-image" src="https://placehold.co/600x600?text=Loading+NFT" alt="NFT Image">
           </div>
           
-          <div class="share-section mt-3">
-            <h4>Share This Auction</h4>
-            <div class="share-buttons">
-              <a href="#" class="share-button share-twitter" id="twitter-share" title="Share on Twitter">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
-                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
-                </svg>
-              </a>
-              <a href="#" class="share-button share-facebook" id="facebook-share" title="Share on Facebook">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
-                  <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
-                </svg>
-              </a>
-              <a href="#" class="share-button share-whatsapp" id="whatsapp-share" title="Share on WhatsApp">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
-                  <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
-                </svg>
-              </a>
-              <a href="#" class="share-button share-telegram" id="telegram-share" title="Share on Telegram">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
-                  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
-                </svg>
-              </a>
-              <button class="share-button share-copy" id="copy-link" title="Copy Link">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-link-45deg" viewBox="0 0 16 16">
-                  <path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1.002 1.002 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4.018 4.018 0 0 1-.128-1.287z"/>
-                  <path d="M6.586 4.672A3 3 0 0 0 7.414 9.5l.775-.776a2 2 0 0 1-.896-3.346L9.12 3.55a2 2 0 1 1 2.83 2.83l-.793.792c.112.42.155.855.128 1.287l1.372-1.372a3 3 0 1 0-4.243-4.243L6.586 4.672z"/>
-                </svg>
-              </button>
+          <div class="card mt-4">
+            <div class="section-title">Share This Auction</div>
+            <div class="share-content">
+              <button id="copy-link" class="btn-action mb-3 w-100">Copy Link</button>
+              <div class="share-buttons">
+                <a id="twitter-share" href="#" target="_blank" class="share-button share-twitter">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter-x" viewBox="0 0 16 16">
+                    <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865l8.875 11.633Z"/>
+                  </svg>
+                </a>
+                <a id="facebook-share" href="#" target="_blank" class="share-button share-facebook">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-facebook" viewBox="0 0 16 16">
+                    <path d="M16 8.049c0-4.446-3.582-8.05-8-8.05C3.58 0-.002 3.603-.002 8.05c0 4.017 2.926 7.347 6.75 7.951v-5.625h-2.03V8.05H6.75V6.275c0-2.017 1.195-3.131 3.022-3.131.876 0 1.791.157 1.791.157v1.98h-1.009c-.993 0-1.303.621-1.303 1.258v1.51h2.218l-.354 2.326H9.25V16c3.824-.604 6.75-3.934 6.75-7.951z"/>
+                  </svg>
+                </a>
+                <a id="whatsapp-share" href="#" target="_blank" class="share-button share-whatsapp">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-whatsapp" viewBox="0 0 16 16">
+                    <path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.729.729 0 0 0-.529.247c-.182.198-.691.677-.691 1.654 0 .977.71 1.916.81 2.049.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232z"/>
+                  </svg>
+                </a>
+                <a id="telegram-share" href="#" target="_blank" class="share-button share-telegram">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-telegram" viewBox="0 0 16 16">
+                    <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM8.287 5.906c-.778.324-2.334.994-4.666 2.01-.378.15-.577.298-.595.442-.03.243.275.339.69.47l.175.055c.408.133.958.288 1.243.294.26.006.549-.1.868-.32 2.179-1.471 3.304-2.214 3.374-2.23.05-.012.12-.026.166.016.047.041.042.12.037.141-.03.129-1.227 1.241-1.846 1.817-.193.18-.33.307-.358.336a8.154 8.154 0 0 1-.188.186c-.38.366-.664.64.015 1.088.327.216.589.393.85.571.284.194.568.387.936.629.093.06.183.125.27.187.331.236.63.448.997.414.214-.02.435-.22.547-.82.265-1.417.786-4.486.906-5.751a1.426 1.426 0 0 0-.013-.315.337.337 0 0 0-.114-.217.526.526 0 0 0-.31-.093c-.3.005-.763.166-2.984 1.09z"/>
+                  </svg>
+                </a>
+              </div>
             </div>
           </div>
         </div>
         
         <div class="auction-info">
           <h2 id="detail-title">NFT Title</h2>
-          <div id="detail-status-badges"></div>
-          
-          <div class="auction-detail-item">
-            <div class="detail-label">Auction ID</div>
-            <div class="detail-value" id="detail-auction-id">#0</div>
+          <div id="detail-action-container" class="mb-4">
+            <!-- Auction action buttons will be placed here -->
           </div>
           
           <div class="auction-detail-item">
-            <div class="detail-label">NFT Contract</div>
-            <div class="detail-value" id="detail-contract"></div>
+            <div class="detail-label">Auction ID</div>
+            <div id="detail-auction-id" class="detail-value">#0</div>
+          </div>
+          
+          <div class="auction-detail-item">
+            <div class="detail-label">Contract Address</div>
+            <div id="detail-contract" class="detail-value">0x0000...0000</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Token ID</div>
-            <div class="detail-value" id="detail-token-id"></div>
+            <div id="detail-token-id" class="detail-value">0</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Seller</div>
-            <div class="detail-value" id="detail-seller"></div>
+            <div id="detail-seller" class="detail-value">0x0000...0000</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Reserve Price</div>
-            <div class="detail-value" id="detail-reserve-price"></div>
+            <div id="detail-reserve-price" class="detail-value">0 ADRIAN</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Current Bid</div>
-            <div class="detail-value" id="detail-current-bid"></div>
+            <div id="detail-current-bid" class="detail-value">No bids yet</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label">Highest Bidder</div>
-            <div class="detail-value" id="detail-highest-bidder"></div>
+            <div id="detail-highest-bidder" class="detail-value">No bidder yet</div>
           </div>
           
           <div class="auction-detail-item">
             <div class="detail-label" id="detail-time-label">Time Remaining</div>
-            <div class="detail-value" id="detail-time-value"></div>
+            <div id="detail-time-value" class="detail-value">Loading...</div>
           </div>
           
-          <div id="detail-action-container" class="mt-4">
-            <!-- Buttons will be added dynamically here -->
+          <!-- Botón de Outbid que solo aparece cuando el usuario ha sido superado -->
+          <div id="outbid-notification" style="display: none;" class="alert alert-warning my-3">
+            <strong>Outbid!</strong> Someone placed a higher bid than yours.
+            <button id="bid-again-btn" class="btn-action mt-2 w-100">Bid Again</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sección para el historial de pujas -->
+      <div class="card mt-4">
+        <div class="section-title">Bid History</div>
+        <div id="bid-history-container">
+          <div id="loading-history" class="text-center p-4">
+            <div class="loading-spinner"></div>
+            <p class="mt-3">Loading bid history...</p>
+          </div>
+          <div id="bid-history-list" class="list-group"></div>
+          <div id="no-bids-message" class="alert alert-info mt-3" style="display: none;">
+            No bids have been placed on this auction yet.
           </div>
         </div>
       </div>
@@ -1014,10 +1030,65 @@
           // Actualizar título de la página
           document.title = `${nftName} - Adrian Auction`;
           
+          // Cargar el historial de pujas
+          if (typeof loadBidHistory === 'function') {
+            console.log("Cargando historial de pujas...");
+            loadBidHistory(auctionId);
+          } else {
+            console.log("La función loadBidHistory no está disponible");
+            // Implementación local para mostrar historial de pujas si no existe la función en auction.js
+            loadBidHistoryManually(auctionId, highestBidder, highestBid);
+          }
+          
         } catch (error) {
           console.error(`Error cargando subasta #${auctionId}:`, error);
           document.getElementById('loading-auction').style.display = 'none';
           document.getElementById('no-auction-message').style.display = 'block';
+        }
+      }
+      
+      // Función local para cargar historial de pujas si loadBidHistory no está disponible
+      async function loadBidHistoryManually(auctionId, highestBidder, highestBid) {
+        console.log(`Cargando historial de pujas manualmente para subasta #${auctionId}`);
+        
+        // Verificar si tenemos el contenedor de historial de pujas
+        const historyContainer = document.getElementById('bid-history-container');
+        if (!historyContainer) {
+          console.warn("No se encontró el contenedor de historial de pujas");
+          return;
+        }
+        
+        const loadingHistory = document.getElementById('loading-history');
+        const bidHistoryList = document.getElementById('bid-history-list');
+        const noBidsMessage = document.getElementById('no-bids-message');
+        
+        // Si no hay puja más alta, mostrar mensaje de que no hay pujas
+        if (highestBid.isZero() || highestBidder === ethers.constants.AddressZero) {
+          if (loadingHistory) loadingHistory.style.display = 'none';
+          if (noBidsMessage) noBidsMessage.style.display = 'block';
+          return;
+        }
+        
+        // Si hay una puja más alta, mostrarla como único elemento del historial
+        if (bidHistoryList) {
+          bidHistoryList.innerHTML = '';
+          
+          const bidItem = document.createElement('div');
+          bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+          
+          bidItem.innerHTML = `
+            <div>
+              <div class="fw-bold">${formatAddressSimple(highestBidder)}</div>
+              <small class="text-muted">Current winning bid</small>
+              <div class="mt-1"><span class="badge bg-success">Winning Bid</span></div>
+            </div>
+            <span class="badge bg-success rounded-pill">${formatEtherSimple(highestBid)} ADRIAN</span>
+          `;
+          
+          bidHistoryList.appendChild(bidItem);
+          
+          if (loadingHistory) loadingHistory.style.display = 'none';
+          bidHistoryList.style.display = 'block';
         }
       }
       

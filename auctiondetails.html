@@ -406,20 +406,20 @@
       overflow: hidden;
     }
     
-    .ticker-wrap {
+    .ticker-container {
       width: 100%;
       overflow: hidden;
       white-space: nowrap;
       box-sizing: border-box;
     }
     
-    .ticker {
+    .ticker-items {
       display: inline-block;
       white-space: nowrap;
       animation: ticker-move 60s linear infinite;
     }
     
-    .ticker:hover {
+    .ticker-items:hover {
       animation-play-state: paused;
     }
     
@@ -557,8 +557,8 @@
     
     <!-- Ticker style carousel for active auctions -->
     <div id="auction-carousel-container" class="sticky-carousel mb-3">
-      <div class="ticker-wrap">
-        <div id="auction-carousel-items" class="ticker">
+      <div class="ticker-container">
+        <div id="auction-carousel-items" class="ticker-items">
           <!-- Ticker items will be loaded dynamically -->
           <div class="ticker-item">
             <div class="auction-carousel-card">
@@ -745,7 +745,7 @@
         console.log("Initializing mini-carousel on details page");
         
         // Add pause on hover functionality for ticker
-        const ticker = document.querySelector('.ticker');
+        const ticker = document.querySelector('.ticker-items');
         if (ticker) {
           ticker.addEventListener('mouseenter', function() {
             ticker.style.animationPlayState = 'paused';

@@ -1050,45 +1050,77 @@
       // Función local para cargar historial de pujas si loadBidHistory no está disponible
       async function loadBidHistoryManually(auctionId, highestBidder, highestBid) {
         console.log(`Cargando historial de pujas manualmente para subasta #${auctionId}`);
+        console.log("Highest Bidder:", highestBidder);
+        console.log("Highest Bid:", highestBid ? highestBid.toString() : "null");
         
-        // Verificar si tenemos el contenedor de historial de pujas
-        const historyContainer = document.getElementById('bid-history-container');
-        if (!historyContainer) {
-          console.warn("No se encontró el contenedor de historial de pujas");
-          return;
-        }
-        
-        const loadingHistory = document.getElementById('loading-history');
-        const bidHistoryList = document.getElementById('bid-history-list');
-        const noBidsMessage = document.getElementById('no-bids-message');
-        
-        // Si no hay puja más alta, mostrar mensaje de que no hay pujas
-        if (highestBid.isZero() || highestBidder === ethers.constants.AddressZero) {
+        try {
+          // Verificar si tenemos el contenedor de historial de pujas
+          const historyContainer = document.getElementById('bid-history-container');
+          if (!historyContainer) {
+            console.warn("No se encontró el contenedor de historial de pujas");
+            return;
+          }
+          
+          const loadingHistory = document.getElementById('loading-history');
+          const bidHistoryList = document.getElementById('bid-history-list');
+          const noBidsMessage = document.getElementById('no-bids-message');
+          
+          // Verificar si hay una puja válida de manera más robusta
+          const hasBid = highestBid && 
+                       (typeof highestBid.isZero === 'function' ? !highestBid.isZero() : highestBid > 0) && 
+                       highestBidder && 
+                       highestBidder !== ethers.constants.AddressZero;
+          
+          if (!hasBid) {
+            console.log("No hay pujas para mostrar");
+            if (loadingHistory) loadingHistory.style.display = 'none';
+            if (noBidsMessage) noBidsMessage.style.display = 'block';
+            if (bidHistoryList) bidHistoryList.style.display = 'none';
+            return;
+          }
+          
+          // Si hay una puja más alta, mostrarla como único elemento del historial
+          if (bidHistoryList) {
+            bidHistoryList.innerHTML = '';
+            
+            const bidItem = document.createElement('div');
+            bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+            
+            try {
+              bidItem.innerHTML = `
+                <div>
+                  <div class="fw-bold">${formatAddressSimple(highestBidder)}</div>
+                  <small class="text-muted">Current winning bid</small>
+                  <div class="mt-1"><span class="badge bg-success">Winning Bid</span></div>
+                </div>
+                <span class="badge bg-success rounded-pill">${formatEtherSimple(highestBid)} ADRIAN</span>
+              `;
+              
+              bidHistoryList.appendChild(bidItem);
+            } catch (error) {
+              console.error("Error al crear elemento de historial de pujas:", error);
+              bidItem.innerHTML = `
+                <div>
+                  <div class="fw-bold">Error showing bid details</div>
+                </div>
+              `;
+              bidHistoryList.appendChild(bidItem);
+            }
+            
+            if (loadingHistory) loadingHistory.style.display = 'none';
+            if (noBidsMessage) noBidsMessage.style.display = 'none';
+            bidHistoryList.style.display = 'block';
+          }
+        } catch (error) {
+          console.error("Error en loadBidHistoryManually:", error);
+          const loadingHistory = document.getElementById('loading-history');
+          const noBidsMessage = document.getElementById('no-bids-message');
+          
           if (loadingHistory) loadingHistory.style.display = 'none';
-          if (noBidsMessage) noBidsMessage.style.display = 'block';
-          return;
-        }
-        
-        // Si hay una puja más alta, mostrarla como único elemento del historial
-        if (bidHistoryList) {
-          bidHistoryList.innerHTML = '';
-          
-          const bidItem = document.createElement('div');
-          bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
-          
-          bidItem.innerHTML = `
-            <div>
-              <div class="fw-bold">${formatAddressSimple(highestBidder)}</div>
-              <small class="text-muted">Current winning bid</small>
-              <div class="mt-1"><span class="badge bg-success">Winning Bid</span></div>
-            </div>
-            <span class="badge bg-success rounded-pill">${formatEtherSimple(highestBid)} ADRIAN</span>
-          `;
-          
-          bidHistoryList.appendChild(bidItem);
-          
-          if (loadingHistory) loadingHistory.style.display = 'none';
-          bidHistoryList.style.display = 'block';
+          if (noBidsMessage) {
+            noBidsMessage.textContent = "Error al cargar el historial de pujas. Intente recargar la página.";
+            noBidsMessage.style.display = 'block';
+          }
         }
       }
       

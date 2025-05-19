@@ -1591,6 +1591,10 @@ async function placeBid(auctionId, bidAmount) {
     const bidInWei = ethers.utils.parseEther(bidAmount.toString());
     console.log("Bid amount in wei:", bidInWei.toString());
     
+    // Check if this device is mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    console.log("Is mobile device:", isMobile);
+    
     // Check allowance
     console.log("Checking current allowance for auction contract");
     const allowance = await tokenContract.allowance(currentAccount, CONTRACT_ADDRESS);
@@ -1601,7 +1605,9 @@ async function placeBid(auctionId, bidAmount) {
       showSuccess("Approving ADRIAN tokens for bidding...");
       
       // Only approve the exact amount needed for the bid
-      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, bidInWei);
+      const approveTx = await tokenContract.approve(CONTRACT_ADDRESS, bidInWei, {
+        gasLimit: isMobile ? 300000 : 200000  // Increased gas limit for mobile
+      });
       console.log("Approval transaction sent for exact bid amount:", approveTx.hash);
       
       showSuccess("Confirming token approval...");
@@ -1620,6 +1626,12 @@ async function placeBid(auctionId, bidAmount) {
         throw new Error("Approval completed but allowance is still insufficient");
       }
       
+      // Adding delay after token approval for mobile devices
+      if (isMobile) {
+        showSuccess("Waiting for token approval to be fully confirmed...");
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
       showSuccess("ADRIAN tokens approved successfully for this bid");
     } else {
       console.log("Sufficient allowance for bid");
@@ -1635,7 +1647,13 @@ async function placeBid(auctionId, bidAmount) {
       bidInWei: bidInWei.toString()
     });
     
-    const tx = await contract.placeBid(auctionId, bidInWei);
+    // Configure gas limit based on device type
+    const gasLimit = isMobile ? 500000 : 300000; // Increased gas limit for mobile
+    
+    const tx = await contract.placeBid(auctionId, bidInWei, {
+      gasLimit: gasLimit
+    });
+    
     console.log("Bid transaction sent:", tx.hash);
     
     // Wait for confirmation

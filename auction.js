@@ -4165,6 +4165,7 @@ async function loadAuctionDetailsPage(auctionId = null) {
   try {
     // Si no hay ID de subasta, mostrar error y salir
     if (!auctionId) {
+      console.error("No se proporcionó ID de subasta");
       document.getElementById('loading-auction').style.display = 'none';
       document.getElementById('no-auction-message').style.display = 'block';
       return;
@@ -4173,43 +4174,75 @@ async function loadAuctionDetailsPage(auctionId = null) {
     // Verificar que tenemos los contratos inicializados
     if (!readOnlyAuctionContract) {
       console.log("Initializing read-only contract first");
-      if (typeof connectWallet === 'function') {
-        await connectWallet(true); // Conexión read-only
-      } else {
-        await initializeContractManually();
+      readOnlyProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+      readOnlyAuctionContract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, readOnlyProvider);
+      console.log("Contrato inicializado para lectura");
+    }
+    
+    // Obtener detalles de la subasta - añadido try/catch adicional y más logging
+    console.log(`Intentando obtener detalles para la subasta #${auctionId}...`);
+    
+    try {
+      // Convertir a BigNumber de manera segura
+      const auctionIdBN = ethers.BigNumber.from(auctionId);
+      console.log(`ID de subasta convertido a BigNumber: ${auctionIdBN.toString()}`);
+      
+      // Llamar al contrato con logging adicional
+      console.log(`Llamando a getManyAuctionDetails con: [${auctionIdBN.toString()}]`);
+      const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionIdBN]);
+      
+      console.log(`Respuesta del contrato:`, auctionDetails);
+      
+      if (!auctionDetails || auctionDetails.length === 0) {
+        console.error(`Subasta #${auctionId} no encontrada - array vacío devuelto por el contrato`);
+        throw new Error(`Auction #${auctionId} not found`);
       }
+      
+      const auction = auctionDetails[0];
+      
+      // Log de los detalles de la subasta
+      console.log(`Detalles de la subasta #${auctionId}:`, {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString() || "N/A",
+        seller: auction.seller,
+        reservePrice: auction.reservePrice?.toString() || "N/A",
+        endTime: auction.endTime?.toString() || "N/A",
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString() || "N/A",
+        active: auction.active ? "Sí" : "No",
+        finalized: auction.finalized ? "Sí" : "No"
+      });
+      
+      // Actualizar la UI con los detalles de la subasta
+      // ...
+      
+      // Mostrar el auction-details-container (en caso de que estuviera oculto)
+      document.getElementById('loading-auction').style.display = 'none';
+      document.getElementById('auction-details-container').style.display = 'block';
+      
+      // Cargar el historial de pujas si existe la función
+      if (typeof loadBidHistory === 'function') {
+        await loadBidHistory(auctionId);
+      }
+      
+      return auction;
+    } catch (contractError) {
+      console.error(`Error al llamar al contrato para la subasta #${auctionId}:`, contractError);
+      
+      // Intentar proporcionar más información sobre el error
+      if (contractError.code === 'CALL_EXCEPTION') {
+        console.error("Error CALL_EXCEPTION: posiblemente la subasta no existe en el contrato");
+      }
+      
+      throw new Error(`Error getting auction details: ${contractError.message}`);
     }
-    
-    // Obtener detalles de la subasta
-    const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionId]);
-    
-    if (!auctionDetails || auctionDetails.length === 0) {
-      throw new Error("Auction not found");
-    }
-    
-    const auction = auctionDetails[0];
-    
-    // Actualizar la UI con los detalles de la subasta
-    // (Esta parte no se incluye aquí ya que varía según la lógica actual)
-    // ...
-    
-    // Mostrar el auction-details-container (en caso de que estuviera oculto)
-    document.getElementById('loading-auction').style.display = 'none';
-    document.getElementById('auction-details-container').style.display = 'block';
-    
-    // Cargar el historial de pujas si existe la función
-    if (typeof loadBidHistory === 'function') {
-      await loadBidHistory(auctionId);
-    }
-    
-    return auction;
   } catch (error) {
     console.error(`Error loading auction #${auctionId}:`, error);
     document.getElementById('loading-auction').style.display = 'none';
     
     // Usar el elemento correcto dependiendo de cuál exista
     if (document.getElementById('error-container') && document.getElementById('error-message')) {
-      document.getElementById('error-message').innerHTML = "Error loading auction details. Please try again later.";
+      document.getElementById('error-message').innerHTML = `Error loading auction details: ${error.message}`;
       document.getElementById('error-container').style.display = 'block';
     } else {
       document.getElementById('no-auction-message').style.display = 'block';
@@ -4544,3 +4577,102 @@ function renderAuctionCard(auction, container, showExtendedInfo = true) {
 
 // Reemplazar la función anterior de renderizado de tarjetas con esta nueva implementación
 // ... existing code ...
+
+// Función para probar la existencia de una subasta y resolver problemas de subastas que aparecen como no existentes
+async function repairAuctionDetails(auctionId) {
+  console.log(`=== REPARACIÓN DE DETALLES DE SUBASTA #${auctionId} ===`);
+  
+  if (!auctionId) {
+    console.error("No se proporcionó ID de subasta");
+    return null;
+  }
+  
+  try {
+    console.log("1. Inicializando contrato de solo lectura...");
+    
+    // Inicializar contrato de solo lectura si no existe
+    let provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    let contract = new ethers.Contract(CONTRACT_ADDRESS, AUCTION_ABI, provider);
+    
+    // Convertir ID a BigNumber de forma segura
+    console.log("2. Convirtiendo ID a BigNumber...");
+    const auctionIdBN = ethers.BigNumber.from(auctionId);
+    console.log(`ID convertido: ${auctionIdBN.toString()}`);
+    
+    console.log("3. Verificando si la subasta está en la lista de subastas activas...");
+    try {
+      const activeAuctionsCount = await contract.getActiveAuctionsCount();
+      console.log(`Total de subastas activas: ${activeAuctionsCount.toString()}`);
+      
+      if (activeAuctionsCount.gt(0)) {
+        // Obtener todas las subastas activas
+        const activeAuctions = await contract.getActiveAuctions(0, activeAuctionsCount);
+        console.log(`Subastas activas obtenidas: ${activeAuctions.length}`);
+        
+        // Buscar el ID en la lista de subastas activas
+        const isActive = activeAuctions.some(id => id.toString() === auctionIdBN.toString());
+        console.log(`¿La subasta está activa? ${isActive ? 'Sí' : 'No'}`);
+      }
+    } catch (error) {
+      console.error("Error al verificar subastas activas:", error);
+    }
+    
+    console.log("4. Intentando obtener detalles directamente con getManyAuctionDetails...");
+    try {
+      const auctionDetails = await contract.getManyAuctionDetails([auctionIdBN]);
+      
+      if (!auctionDetails || auctionDetails.length === 0) {
+        console.error("La subasta no fue encontrada en el contrato");
+        return null;
+      }
+      
+      const auction = auctionDetails[0];
+      console.log("5. Detalles de la subasta recuperados:", {
+        nftContract: auction.nftContract,
+        tokenId: auction.tokenId?.toString() || "N/A",
+        seller: auction.seller,
+        reservePrice: auction.reservePrice?.toString() || "N/A",
+        endTime: auction.endTime?.toString() || "N/A",
+        highestBidder: auction.highestBidder,
+        highestBid: auction.highestBid?.toString() || "N/A",
+        active: auction.active ? "Sí" : "No",
+        finalized: auction.finalized ? "Sí" : "No"
+      });
+      
+      console.log("6. Actualizando interfaz de usuario con los datos recuperados...");
+      
+      // Mostrar el auction-details-container y ocultar el mensaje de error
+      document.getElementById('loading-auction').style.display = 'none';
+      
+      if (document.getElementById('no-auction-message')) {
+        document.getElementById('no-auction-message').style.display = 'none';
+      }
+      
+      if (document.getElementById('error-container')) {
+        document.getElementById('error-container').style.display = 'none';
+      }
+      
+      if (document.getElementById('auction-details-container')) {
+        document.getElementById('auction-details-container').style.display = 'block';
+      }
+      
+      // Iniciar la carga normal ahora que sabemos que la subasta existe
+      console.log("7. Reintentando carga normal con loadAuctionDetailsPage...");
+      try {
+        await loadAuctionDetailsPage(auctionId);
+        console.log("=== REPARACIÓN COMPLETADA CON ÉXITO ===");
+        return auction;
+      } catch (loadError) {
+        console.error("Error en loadAuctionDetailsPage después de la reparación:", loadError);
+        console.log("=== REPARACIÓN PARCIAL COMPLETADA ===");
+        return auction;
+      }
+    } catch (detailsError) {
+      console.error("Error obteniendo detalles de la subasta:", detailsError);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error en repairAuctionDetails:", error);
+    return null;
+  }
+}

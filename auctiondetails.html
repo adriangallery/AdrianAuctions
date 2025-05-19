@@ -766,7 +766,7 @@
           }
         });
         
-        // If after 3 seconds auction.js hasn't loaded, show alternative message
+        // Si después de 5 segundos auction.js no ha cargado, mostrar mensaje alternativo
         setTimeout(() => {
           if (!window.auctionJsLoaded) {
             const carouselItems = document.getElementById('auction-carousel-items');
@@ -780,7 +780,7 @@
               `;
             }
           }
-        }, 3000);
+        }, 5000);
       }
       
       // Setup copy link button
@@ -1206,13 +1206,13 @@
             loadAuctionDetailsManually(auctionId);
           });
         } else {
-          // Si después de 3 segundos no se ha cargado auction.js, usar método alternativo
+          // Si después de 5 segundos no se ha cargado auction.js, usar método alternativo
           setTimeout(() => {
             if (document.getElementById('loading-auction').style.display !== 'none') {
               console.warn("Timeout esperando auction.js, cargando manualmente");
               loadAuctionDetailsManually(auctionId);
             }
-          }, 3000);
+          }, 5000);
         }
       } else {
         // No auction ID provided

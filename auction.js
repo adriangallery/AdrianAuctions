@@ -4413,3 +4413,188 @@ async function loadAuctionDetailsPage(auctionId = null) {
     document.getElementById('error-container').style.display = 'block';
   }
 }
+
+// Función para obtener el historial de pujas para una subasta específica
+async function getAuctionBidHistory(auctionId) {
+  try {
+    console.log(`Getting bid history for auction #${auctionId}...`);
+    
+    // Create filter for BidPlaced events with the specific auctionId
+    const filter = readOnlyAuctionContract.filters.BidPlaced(auctionId);
+    
+    // Get events from block 0 to the current block
+    const events = await readOnlyAuctionContract.queryFilter(filter, 0, 'latest');
+    
+    console.log(`Found ${events.length} bid events for auction #${auctionId}`);
+    
+    // Process events to extract relevant information
+    const bidHistory = await Promise.all(events.map(async (event) => {
+      // args contain the event parameters: auctionId, bidder, amount
+      const { bidder, amount } = event.args;
+      
+      // Get the block timestamp for this event
+      const block = await readOnlyProvider.getBlock(event.blockNumber);
+      
+      return {
+        bidder,
+        amount: amount,
+        formattedAmount: formatAdrian(amount),
+        timestamp: block.timestamp,
+        date: new Date(block.timestamp * 1000).toLocaleString(),
+        txHash: event.transactionHash
+      };
+    }));
+    
+    // Sort by timestamp, with the most recent bids first
+    bidHistory.sort((a, b) => b.timestamp - a.timestamp);
+    
+    return bidHistory;
+    
+  } catch (error) {
+    console.error(`Error getting bid history:`, error);
+    return [];
+  }
+}
+
+// Update the loadBidHistory function to use the event-based history
+async function loadBidHistory(auctionId) {
+  console.log(`Loading bid history for auction #${auctionId}...`);
+  
+  // Create a container for bid history if it doesn't exist
+  if (!document.getElementById('bid-history-container')) {
+    console.log("Creating bid history section...");
+    
+    // Find insertion point after main details
+    const detailsContainer = document.getElementById('auction-details-container');
+    
+    if (!detailsContainer) {
+      console.warn("Cannot find auction details container");
+      return;
+    }
+    
+    // Create and add history section
+    const historySection = document.createElement('div');
+    historySection.className = 'card mt-4';
+    historySection.innerHTML = `
+      <div class="section-title">Bid History</div>
+      <div id="bid-history-container">
+        <div id="loading-history" class="text-center p-4">
+          <div class="loading-spinner"></div>
+          <p class="mt-3">Loading bid history...</p>
+        </div>
+        <div id="bid-history-list" class="list-group"></div>
+        <div id="no-bids-message" class="alert alert-info mt-3" style="display: none;">
+          No bids have been placed on this auction yet.
+        </div>
+      </div>
+    `;
+    
+    detailsContainer.appendChild(historySection);
+  }
+  
+  try {
+    // Verify we have contracts initialized
+    if (!readOnlyAuctionContract) {
+      console.error("Auction contract not initialized");
+      document.getElementById('loading-history').style.display = 'none';
+      document.getElementById('no-bids-message').textContent = "Could not load bid history. Try refreshing the page.";
+      document.getElementById('no-bids-message').style.display = 'block';
+      return;
+    }
+    
+    // Get auction details
+    const auctionDetails = await readOnlyAuctionContract.getManyAuctionDetails([auctionId]);
+    
+    if (!auctionDetails || auctionDetails.length === 0) {
+      console.warn("Could not fetch auction details");
+      document.getElementById('loading-history').style.display = 'none';
+      document.getElementById('no-bids-message').textContent = "Could not load auction data.";
+      document.getElementById('no-bids-message').style.display = 'block';
+      return;
+    }
+    
+    const auction = auctionDetails[0];
+    const highestBidder = auction.highestBidder;
+    const highestBid = auction.highestBid ? ethers.BigNumber.from(auction.highestBid) : ethers.BigNumber.from(0);
+    
+    // If no bids, show message
+    if (highestBid.isZero() || highestBidder === ethers.constants.AddressZero) {
+      document.getElementById('loading-history').style.display = 'none';
+      document.getElementById('no-bids-message').style.display = 'block';
+      return;
+    }
+    
+    // Get bid history from events
+    const bidHistory = await getAuctionBidHistory(auctionId);
+    
+    const bidHistoryList = document.getElementById('bid-history-list');
+    bidHistoryList.innerHTML = '';
+    
+    if (bidHistory.length === 0) {
+      // If we couldn't get history from events but we know there's a highest bid
+      // show at least the current highest bid
+      const bidItem = document.createElement('div');
+      bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+      
+      bidItem.innerHTML = `
+        <div>
+          <div class="fw-bold">${formatAddress(highestBidder)}</div>
+          <small class="text-muted">Current winning bid</small>
+        </div>
+        <span class="badge bg-primary rounded-pill">${formatAdrian(highestBid)}</span>
+      `;
+      
+      bidHistoryList.appendChild(bidItem);
+    } else {
+      // Show complete bid history
+      bidHistory.forEach((bid, index) => {
+        const bidItem = document.createElement('div');
+        bidItem.className = 'list-group-item d-flex justify-content-between align-items-center';
+        
+        // Highlight if this is the current winning bid
+        const isWinningBid = index === 0;
+        const badgeClass = isWinningBid ? 'bg-success' : 'bg-primary';
+        const bidStatus = isWinningBid ? 'Current winning bid' : '';
+        
+        bidItem.innerHTML = `
+          <div>
+            <div class="fw-bold">${formatAddress(bid.bidder)}</div>
+            <small class="text-muted">${bid.date}</small>
+            ${isWinningBid ? `<div class="mt-1"><span class="badge bg-success">Winning Bid</span></div>` : ''}
+          </div>
+          <span class="badge ${badgeClass} rounded-pill">${bid.formattedAmount}</span>
+        `;
+        
+        bidHistoryList.appendChild(bidItem);
+        
+        // Add a link to view the transaction on explorer if it's not the winning bid
+        if (!isWinningBid) {
+          const txLink = document.createElement('div');
+          txLink.className = 'mt-1 text-end';
+          txLink.innerHTML = `
+            <a href="https://basescan.org/tx/${bid.txHash}" target="_blank" class="text-decoration-none" style="font-size: 0.8rem;">
+              <small>View Transaction</small>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-box-arrow-up-right" viewBox="0 0 16 16">
+                <path fill-rule="evenodd" d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5z"/>
+                <path fill-rule="evenodd" d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0v-5z"/>
+              </svg>
+            </a>
+          `;
+          bidItem.appendChild(txLink);
+        }
+      });
+    }
+    
+    // Show history list and hide loading
+    document.getElementById('loading-history').style.display = 'none';
+    bidHistoryList.style.display = 'block';
+    
+    console.log("Bid history loaded successfully");
+    
+  } catch (error) {
+    console.error("Error loading bid history:", error);
+    document.getElementById('loading-history').style.display = 'none';
+    document.getElementById('no-bids-message').textContent = "Error loading bid history. Please try again later.";
+    document.getElementById('no-bids-message').style.display = 'block';
+  }
+}

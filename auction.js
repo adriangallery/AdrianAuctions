@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const contractInfoElement = document.getElementById('contractInfo');
   if (contractInfoElement) {
     contractInfoElement.textContent = 
-      `Contract: ${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(38)}`;
+    `Contract: ${CONTRACT_ADDRESS.substring(0, 6)}...${CONTRACT_ADDRESS.substring(38)}`;
   }
   
   // Connect button event listener
@@ -120,95 +120,95 @@ document.addEventListener('DOMContentLoaded', () => {
   const myAuctionsTab = document.getElementById("myauctions-tab");
   if (myAuctionsTab) {
     myAuctionsTab.addEventListener("click", () => {
-      if (currentAccount) {
-        loadUserAuctions(currentAccount);
-      }
-    });
+    if (currentAccount) {
+      loadUserAuctions(currentAccount);
+    }
+  });
   }
   
   const myBidsTab = document.getElementById("mybids-tab");
   if (myBidsTab) {
     myBidsTab.addEventListener("click", () => {
-      if (currentAccount) {
-        loadUserBids(currentAccount);
-      }
-    });
+    if (currentAccount) {
+      loadUserBids(currentAccount);
+    }
+  });
   }
   
   const createTab = document.getElementById("create-tab");
   if (createTab) {
     createTab.addEventListener("click", () => {
-      if (currentAccount) {
-        // Reiniciar estado de paginación cuando se cambia a la pestaña
-        nftPageKey = null;
-        ownedNFTs = [];
-        hasMoreNfts = true;
-        loadUserNFTs(currentAccount);
-      }
-    });
+    if (currentAccount) {
+      // Reiniciar estado de paginación cuando se cambia a la pestaña
+      nftPageKey = null;
+      ownedNFTs = [];
+      hasMoreNfts = true;
+      loadUserNFTs(currentAccount);
+    }
+  });
   }
   
   // Botón Load More NFTs
   const loadMoreNftsBtn = document.getElementById("loadMoreNftsBtn");
   if (loadMoreNftsBtn) {
     loadMoreNftsBtn.addEventListener("click", () => {
-      if (currentAccount && hasMoreNfts) {
-        loadUserNFTs(currentAccount, true); // true = append mode
-      }
-    });
+    if (currentAccount && hasMoreNfts) {
+      loadUserNFTs(currentAccount, true); // true = append mode
+    }
+  });
   }
   
   // Form handlers
   const createAuctionForm = document.getElementById("createAuctionForm");
   if (createAuctionForm) {
     createAuctionForm.addEventListener("submit", (e) => {
-      e.preventDefault();
-      if (!currentAccount) {
+    e.preventDefault();
+    if (!currentAccount) {
         showError("Please connect your wallet first");
-        return;
-      }
-      
-      if (!selectedNFT) {
+      return;
+    }
+    
+    if (!selectedNFT) {
         showError("Please select an NFT first");
-        return;
-      }
-      
-      const reservePrice = document.getElementById("reservePrice").value;
-      const duration = document.getElementById("duration").value;
-      
-      // Validación de los inputs
-      if (parseFloat(reservePrice) <= 0) {
+      return;
+    }
+    
+    const reservePrice = document.getElementById("reservePrice").value;
+    const duration = document.getElementById("duration").value;
+    
+    // Validación de los inputs
+    if (parseFloat(reservePrice) <= 0) {
         showError("Reserve price must be greater than 0");
-        return;
-      }
-      
-      if (parseInt(duration) < 1) {
+      return;
+    }
+    
+    if (parseInt(duration) < 1) {
         showError("Duration must be at least 1 hour");
-        return;
-      }
-      
+      return;
+    }
+    
       console.log("Starting auction creation with parameters:", {
-        nftContract: selectedNFT.contract,
-        tokenId: selectedNFT.tokenId,
-        reservePrice: reservePrice,
-        duration: duration
-      });
-      
-      createNewAuction(selectedNFT.contract, selectedNFT.tokenId, reservePrice, duration);
+      nftContract: selectedNFT.contract,
+      tokenId: selectedNFT.tokenId,
+      reservePrice: reservePrice,
+      duration: duration
     });
+    
+    createNewAuction(selectedNFT.contract, selectedNFT.tokenId, reservePrice, duration);
+  });
   }
   
   // Bid modal setup
   const placeBidBtn = document.getElementById("placeBidBtn");
   if (placeBidBtn) {
     placeBidBtn.addEventListener("click", () => {
-      const auctionId = document.getElementById("bidAuctionId").value;
-      const bidAmount = document.getElementById("bidAmount").value;
-      
-      placeBid(auctionId, bidAmount);
-      const bidModal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
-      bidModal.hide();
-    });
+    const auctionId = document.getElementById("bidAuctionId").value;
+    const bidAmount = document.getElementById("bidAmount").value;
+    
+    placeBid(auctionId, bidAmount);
+    const bidModal = bootstrap.Modal.getInstance(document.getElementById('bidModal'));
+    bidModal.hide();
+  });
   }
   
   // Navigation buttons
@@ -382,7 +382,7 @@ async function connectWallet() {
     // Only load active auctions on the main page (not on detail pages)
     const auctionsList = document.getElementById("auctionsList");
     if (auctionsList) {
-      await loadActiveAuctions();
+    await loadActiveAuctions();
     }
     
   } catch (error) {
@@ -1257,15 +1257,15 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
       
       try {
         const tokenURI = await nftContractInstance.tokenURI(tokenId);
-        console.log(`Token URI obtenido:`, tokenURI);
-        
-        if (tokenURI) {
-          // Try to fetch metadata
+      console.log(`Token URI obtenido:`, tokenURI);
+      
+      if (tokenURI) {
+        // Try to fetch metadata
           let metadata = null;
           
-          if (tokenURI.startsWith('ipfs://')) {
+        if (tokenURI.startsWith('ipfs://')) {
             // Extracting the CID (Content Identifier) correctly
-            const ipfsHash = tokenURI.replace('ipfs://', '');
+          const ipfsHash = tokenURI.replace('ipfs://', '');
             // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
             let ipfsUrl;
             if (ipfsHash.startsWith('ipfs/')) {
@@ -1275,18 +1275,18 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
               ipfsUrl = `https://ipfs.io/ipfs/${ipfsHash}`;
               console.log(`Token URI IPFS estándar:`, ipfsUrl);
             }
-            
-            try {
-              console.log(`Obteniendo metadata desde IPFS:`, ipfsUrl);
-              const response = await fetch(ipfsUrl);
+          
+          try {
+            console.log(`Obteniendo metadata desde IPFS:`, ipfsUrl);
+            const response = await fetch(ipfsUrl);
               metadata = await response.json();
-            } catch (error) {
-              console.warn("Error al obtener metadata desde IPFS:", error);
-            }
-          } else if (tokenURI.startsWith('http')) {
-            try {
-              console.log(`Obteniendo metadata desde HTTP:`, tokenURI);
-              const response = await fetch(tokenURI);
+          } catch (error) {
+            console.warn("Error al obtener metadata desde IPFS:", error);
+          }
+        } else if (tokenURI.startsWith('http')) {
+          try {
+            console.log(`Obteniendo metadata desde HTTP:`, tokenURI);
+            const response = await fetch(tokenURI);
               metadata = await response.json();
             } catch (error) {
               console.warn("Error al obtener metadata HTTP:", error);
@@ -1313,7 +1313,7 @@ async function renderAuction(auction, auctionId, container, isOwner = false, isH
                   console.log(`URL IPFS estándar:`, imageUrl);
                 }
               } else {
-                imageUrl = metadata.image;
+              imageUrl = metadata.image;
               }
               console.log(`Imagen URL:`, imageUrl);
             }
@@ -1486,14 +1486,14 @@ async function loadNFTForBidModal(nftContract, tokenId) {
       try {
         const tokenURI = await nftContractInstance.tokenURI(tokenId);
         console.log("Token URI for bid modal:", tokenURI);
-        
-        if (tokenURI) {
+      
+      if (tokenURI) {
           let metadata = null;
-          
-          // Handle IPFS URIs
-          if (tokenURI.startsWith('ipfs://')) {
+        
+        // Handle IPFS URIs
+        if (tokenURI.startsWith('ipfs://')) {
             // Extracting the CID (Content Identifier) correctly
-            const ipfsHash = tokenURI.replace('ipfs://', '');
+          const ipfsHash = tokenURI.replace('ipfs://', '');
             // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
             let ipfsUrl;
             if (ipfsHash.startsWith('ipfs/')) {
@@ -1505,44 +1505,44 @@ async function loadNFTForBidModal(nftContract, tokenId) {
             }
             
             try {
-              const response = await fetch(ipfsUrl);
-              metadata = await response.json();
+          const response = await fetch(ipfsUrl);
+          metadata = await response.json();
               console.log("IPFS metadata for bid modal:", metadata);
             } catch (error) {
               console.warn("Error fetching IPFS metadata for bid modal:", error);
             }
-          } else if (tokenURI.startsWith('http')) {
+        } else if (tokenURI.startsWith('http')) {
             try {
-              const response = await fetch(tokenURI);
-              metadata = await response.json();
+          const response = await fetch(tokenURI);
+          metadata = await response.json();
               console.log("HTTP metadata for bid modal:", metadata);
             } catch (error) {
               console.warn("Error fetching HTTP metadata for bid modal:", error);
             }
-          }
-          
-          if (metadata) {
+        }
+        
+        if (metadata) {
             if (metadata.name) {
               nftName = metadata.name;
             }
             
-            if (metadata.image) {
-              if (metadata.image.startsWith('ipfs://')) {
+          if (metadata.image) {
+            if (metadata.image.startsWith('ipfs://')) {
                 // Extracting the CID (Content Identifier) correctly
-                const imageHash = metadata.image.replace('ipfs://', '');
+              const imageHash = metadata.image.replace('ipfs://', '');
                 // Fix: Check if the hash already contains 'ipfs/' prefix to avoid duplication
                 if (imageHash.startsWith('ipfs/')) {
                   imageUrl = `https://ipfs.io/${imageHash}`;
                   console.log(`URL IPFS corregida para evitar duplicación:`, imageUrl);
                 } else {
-                  imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
+              imageUrl = `https://ipfs.io/ipfs/${imageHash}`;
                   console.log(`URL IPFS estándar:`, imageUrl);
                 }
-              } else {
-                imageUrl = metadata.image;
-              }
-              console.log("Image URL for bid modal:", imageUrl);
+            } else {
+              imageUrl = metadata.image;
             }
+              console.log("Image URL for bid modal:", imageUrl);
+          }
           }
         }
       } catch (err) {
@@ -2233,28 +2233,28 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       
       // 1. Create NFT contract instance and approve directly
       console.log("Creating NFT contract instance:", nftContract);
-      const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
-      
+    const nftContractInstance = new ethers.Contract(nftContract, ERC721_ABI, signer);
+    
       // 2. APPROVE TOKEN USING setApprovalForAll
       console.log("Requesting approval using setApprovalForAll...");
       showSuccess("Requesting permission to use NFT...");
-      
-      try {
-        const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
+    
+    try {
+      const approveTx = await nftContractInstance.setApprovalForAll(CONTRACT_ADDRESS, true, {
           gasLimit: 250000
-        });
+      });
         console.log("Approval transaction sent:", approveTx.hash);
-        
+      
         showSuccess("Confirming approval...");
-        const approveReceipt = await approveTx.wait();
+      const approveReceipt = await approveTx.wait();
         console.log("Approval confirmed:", approveReceipt);
-        
+      
         // Wait to ensure blockchain has processed the approval
         console.log("Waiting 3 seconds to ensure approval has been processed...");
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-      } catch (error) {
-        if (error.code === 4001) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+    } catch (error) {
+      if (error.code === 4001) {
           throw new Error("Approval transaction rejected by user");
         }
         console.warn("Error in global approval:", error);
@@ -2308,31 +2308,31 @@ async function createNewAuction(nftContract, tokenId, reservePrice, durationHour
       const gasLimit = 500000;
       
       // Call createAuction method
-      const tx = await auctionContract.createAuction(
-        nftContract,
+    const tx = await auctionContract.createAuction(
+      nftContract,
         tokenIdBN,
-        reservePriceWei,
+      reservePriceWei,
         durationSecs,
         { gasLimit }
-      );
-      
+    );
+    
       console.log("Transaction sent:", tx.hash);
       showSuccess(`Transaction sent. Waiting for confirmation...`);
-      
+    
       const receipt = await tx.wait();
-      
-      if (receipt.status === 0) {
+    
+    if (receipt.status === 0) {
         throw new Error("Transaction failed on the blockchain");
-      }
-      
+    }
+    
       // Find AuctionCreated event in logs
-      const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
-      
-      if (auctionCreatedEvent && auctionCreatedEvent.args) {
-        const auctionId = auctionCreatedEvent.args.auctionId.toString();
+    const auctionCreatedEvent = receipt.events?.find(e => e.event === 'AuctionCreated');
+    
+    if (auctionCreatedEvent && auctionCreatedEvent.args) {
+      const auctionId = auctionCreatedEvent.args.auctionId.toString();
         console.log("New auction ID:", auctionId);
         showSuccess(`Auction #${auctionId} created successfully!`);
-      } else {
+    } else {
         showSuccess("Auction created successfully!");
       }
     }
@@ -2630,7 +2630,7 @@ function showRelistModal(auctionId) {
   // Show modal
   const relistModal = new bootstrap.Modal(document.getElementById('relistModal'));
   relistModal.show();
-}
+} 
 
 // Debug function to inspect auction data structure directly
 async function debugAuction(auctionId) {
@@ -3044,7 +3044,7 @@ async function loadAuctionDetails(auctionId) {
     // Update the UI with auction details
     document.getElementById('detail-nft-image').src = imageUrl;
     document.getElementById('detail-title').textContent = nftName;
-    document.getElementById('status-badges').innerHTML = statusBadges;
+    document.getElementById('detail-status-badges').innerHTML = statusBadges;
     document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
     document.getElementById('detail-contract').textContent = formatAddress(nftContract);
     document.getElementById('detail-token-id').textContent = tokenId;
@@ -4317,13 +4317,13 @@ async function loadAuctionDetailsPage(auctionId = null) {
     // Populate auction details in the page
     document.getElementById('detail-nft-image').src = imageUrl;
     document.getElementById('detail-title').textContent = nftName;
-    document.getElementById('status-badges').innerHTML = statusBadges;
+    document.getElementById('detail-status-badges').innerHTML = statusBadges;
     document.getElementById('detail-auction-id').textContent = `#${auctionId}`;
     document.getElementById('detail-contract').textContent = formatAddress(nftContract);
     document.getElementById('detail-token-id').textContent = tokenId;
     document.getElementById('detail-seller').textContent = formatAddress(seller);
-    document.getElementById('detail-reserve-price').textContent = formatAdrian(reservePrice);
-    document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? formatAdrian(highestBid) : "No bids yet";
+    document.getElementById('detail-reserve-price').textContent = `${formatAdrian(reservePrice)}`;
+    document.getElementById('detail-current-bid').textContent = highestBid.gt(0) ? `${formatAdrian(highestBid)}` : "No bids yet";
     document.getElementById('detail-highest-bidder').textContent = highestBidder !== ethers.constants.AddressZero ? formatAddress(highestBidder) : "No bidder yet";
     
     // Time display
